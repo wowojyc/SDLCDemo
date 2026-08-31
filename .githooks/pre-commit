@@ -7,9 +7,18 @@
 set -e
 
 echo "[pre-commit] 跑测试..."
-if ! make test >/dev/null 2>&1; then
-  echo "测试未通过，拒绝提交。请先修复。" >&2
-  exit 1
+# Windows 上可能没有 make：有则走 make（含 sdlc-test-run 标记），没有则退化直跑 pytest
+if command -v make >/dev/null 2>&1; then
+  if ! make test >/dev/null 2>&1; then
+    echo "测试未通过，拒绝提交。请先修复。" >&2
+    exit 1
+  fi
+else
+  if ! python -m pytest -q >/dev/null 2>&1; then
+    echo "测试未通过，拒绝提交。请先修复。" >&2
+    exit 1
+  fi
+  mkdir -p .git && touch .git/sdlc-test-run
 fi
 
 # 拦住"顺手改测试"：同时改了 src/ 和 tests/ 就要求拆开提交

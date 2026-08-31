@@ -7,7 +7,10 @@ name: agent-evals
 # 所以配置一变就要像测代码一样做回归。
 #
 # 两类触发：配置变更（谁改谁先过考）+ 每天定时兜底。
-# 前置：Secrets 配 QODER_PERSONAL_ACCESS_TOKEN
+# 前置：Secrets 配 LLM_API_KEY（硅基流动：https://cloud.siliconflow.com 获取）
+# 可选：LLM_BASE_URL / LLM_MODEL 仓库变量，默认硅基流动 + DeepSeek-V3
+#
+# 执行方式：远端 LLM 产出 unified diff 补丁 → 应用后跑确定性检查（evals/check.sh）。
 
 on:
   pull_request:
@@ -34,12 +37,11 @@ jobs:
           pip install -r requirements-dev.txt
           sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Install Qoder CLI
-        run: curl -fsSL https://qoder.com/install | bash
-
       - name: Run eval suite
         env:
-          QODER_PERSONAL_ACCESS_TOKEN: ${{ secrets.QODER_PERSONAL_ACCESS_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL || 'https://api.siliconflow.cn/v1' }}
+          LLM_MODEL: ${{ vars.LLM_MODEL || 'deepseek-ai/DeepSeek-V3' }}
         run: |
           failed=0
           total=0
@@ -48,16 +50,34 @@ jobs:
             prompt=$(jq -r '.prompt' "$eval_file")
 
             echo "=== 运行 eval: $eval_file ==="
-            # 非交互跑真实任务；工具集受限，避免副作用
-            qodercli -p "$prompt" \
-              --allowed-tools 'Read,Edit,Bash(make test)' \
-              --output-format=json \
-              --max-turns=8 > result.json 2>/dev/null || true
+            # 让远端 LLM 产出可应用的补丁（OpenAI 兼容协议）
+            {
+              echo "你是资深工程师。请完成下面的任务，只输出可应用的 unified diff（git diff 格式，用 \`\`\`diff 代码块包裹），不要解释。"
+              echo "任务：$prompt"
+            } > /tmp/eval-prompt.txt
+
+            jq -n --arg model "$LLM_MODEL" --rawfile content /tmp/eval-prompt.txt \
+              '{model: $model, messages: [{role: "user", content: $content}], max_tokens: 2048}' |
+              curl -sS --max-time 300 -X POST "$LLM_BASE_URL/chat/completions" \
+                -H "Authorization: Bearer $LLM_API_KEY" \
+                -H "Content-Type: application/json" \
+                -d @- > result.json
+
+            # 提取 ```diff 代码块并应用
+            jq -r '.choices[0].message.content // empty' result.json > /tmp/model-output.txt
+            awk '/^```diff/{flag=1; next} /^```/{flag=0} flag' /tmp/model-output.txt > /tmp/change.patch
+            if [ -s /tmp/change.patch ] && git apply --check /tmp/change.patch 2>/dev/null; then
+              git apply /tmp/change.patch
+              echo "已应用模型补丁（$(wc -l < /tmp/change.patch) 行）"
+            else
+              echo "::warning::模型未产出可应用补丁，该 eval 视为未通过"
+            fi
 
             if ! ./evals/check.sh "$eval_file" result.json; then
               failed=$((failed+1))
               echo "::warning file=$eval_file::该 eval 未通过"
             fi
+            git reset --hard HEAD 2>/dev/null || true
           done
 
           echo "总计 $total 个 eval，失败 $failed 个" >> "$GITHUB_STEP_SUMMARY"

@@ -108,7 +108,8 @@ git config core.hooksPath .githooks   # 启用提交前兜底
 
 ### Gate 4 · 评审
 提交 PR，`.github/workflows/pr-review.yml` 自动跑：读 `REVIEW.md` → AI 审 → 贴评论。
-在仓库 Settings → Secrets 配 `QODER_PERSONAL_ACCESS_TOKEN`。
+在仓库 Settings → Secrets 配 `LLM_API_KEY`（硅基流动，https://cloud.siliconflow.com 获取）。
+不配则云端审查自动跳过（不是失败），本地 pre-push 审查不受影响。
 
 **验收**：发现项按严重度分级、带轮次标签、Nit ≤ 5 条；你只判断意图与风险。
 
@@ -130,7 +131,7 @@ Actions 里 `maintenance-scan` 每天 03:00 跑；也可手动触发并传 value
 |---|---|---|---|
 | `ci.yml` | push / PR | 跑测试 + lint | 地基 |
 | `pr-review.yml` | PR 开启/更新 | 按 REVIEW.md 审，贴评论 | 05 部署 |
-| `agent-evals.yml` | 配置变更 + 每天 02:00 | 跑 eval 套件，掉分就失败 | 04 测试 |
+| `agent-evals.yml` | 配置变更 + 每天 02:00（北京时间，UTC 18:00） | 跑 eval 套件，掉分就失败 | 04 测试 |
 | `maintenance-scan.yml` | 每天 03:00 + 手动 | 确定性检测 → 分档响应 | 06 维护 |
 
 ---
@@ -141,7 +142,8 @@ Actions 里 `maintenance-scan` 每天 03:00 跑；也可手动触发并传 value
 2. **AI 不批准、不阻塞合并**：PR 审查只是建议，批准走 code owner + 分支保护。
 3. **规则文件控制在一页内**：细节放 `.qoder/rules/`，按需加载。
 4. **Hooks 管底线，规则管常见**：必须 100% 守住的（不许改测试）用 hook；其余用规则文件。
-5. **qodercli 在 headless 下 ask 会变成 deny**：CI 里跑要显式给 `--allowed-tools`。
+5. **本地 hooks 用 qodercli，远端 CI 不再依赖它**：pre-push/pre-commit 用本地已登录的 Qoder 审查；
+   远端 CI 的 AI 环节统一走 `LLM_API_KEY`（OpenAI 兼容协议），换供应商只改 Secret。
 
 ---
 

@@ -66,18 +66,33 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Install Qoder CLI
-        run: curl -fsSL https://qoder.com/install | bash
-      - name: 只读诊断
+      - name: 只读诊断（远端 LLM，不修改任何文件）
         env:
-          QODER_PERSONAL_ACCESS_TOKEN: ${{ secrets.QODER_PERSONAL_ACCESS_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL || 'https://api.siliconflow.cn/v1' }}
+          LLM_MODEL: ${{ vars.LLM_MODEL || 'deepseek-ai/DeepSeek-V3' }}
         run: |
-          qodercli -p "本仓库 CI 测试失败率出现异常漂移：${{ needs.detect.outputs.summary }}。
-          请只做**只读调查**：查看最近的测试代码与 CI 配置，给出可能原因和排查建议。
-          不要修改任何文件。" \
-            --allowed-tools 'Read,Grep,Glob' \
-            --output-format=json --max-turns=6 > diagnose.json || true
-          jq -r '.result // .content // .text // tostring' diagnose.json \
+          # 打包上下文：指标历史 + CI 配置，让 LLM 基于事实诊断
+          {
+            echo "仓库指标出现异常漂移：${{ needs.detect.outputs.summary }}"
+            echo ""
+            echo "--- metrics/ci_test_failure_rate.json ---"
+            cat metrics/ci_test_failure_rate.json
+            echo ""
+            echo "--- .github/workflows/ci.yml ---"
+            cat .github/workflows/ci.yml
+            echo ""
+            echo "请只做**只读诊断**：基于上述指标与 CI 配置，给出可能原因和排查建议。不要修改任何文件，不要给模糊结论。"
+          } > /tmp/diagnose-prompt.txt
+
+          jq -n --arg model "$LLM_MODEL" --rawfile content /tmp/diagnose-prompt.txt \
+            '{model: $model, messages: [{role: "user", content: $content}], max_tokens: 2048}' |
+            curl -sS --max-time 300 -X POST "$LLM_BASE_URL/chat/completions" \
+              -H "Authorization: Bearer $LLM_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d @- > diagnose.json || true
+
+          jq -r '.choices[0].message.content // .error.message // "（LLM 调用失败）"' diagnose.json \
             >> "$GITHUB_STEP_SUMMARY"
 
   act:
