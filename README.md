@@ -20,7 +20,7 @@
 
 | 事件 | 本仓库的用法 | 对应原课 |
 |---|---|---|
-| `SessionStart` | 清除"已跑测试"标记 | — |
+| `Stop`（通过后清标记） | 校验通过则清除"已跑测试"标记（IDE 无 SessionStart，等效替代） | — |
 | `PreToolUse` + `exit 2` | 拦危险命令、拦改测试文件 | 03.5 硬防护 |
 | `PostToolUse` | 写完文件自动 lint | 03.5 硬防护 |
 | `Stop` + `exit 2` | **没跑测试不许停** | 03.7 反馈闭环兜底 |
@@ -39,7 +39,7 @@
 ├─ bands.yaml                    06 维护：越界响应层级
 ├─ .qoder/
 │  ├─ rules/api-conventions.md   按需加载的规则（≈ Skill）
-│  └─ hooks/*.sh                 5 个钩子脚本
+│  └─ hooks/*.py                 4 个钩子脚本（Python 标准库，零依赖）
 ├─ qoder-settings.example.json   hooks + permissions 配置示例
 ├─ src/ tests/ Makefile          最小可跑项目（一条命令跑测试）
 ├─ .githooks/pre-commit          git 层兜底（补 hooks 之外的来源）
@@ -75,7 +75,7 @@ git config core.hooksPath .githooks   # 启用提交前兜底
 # 复制 qoder-settings.example.json 的内容进去后，需要重启 Qoder 才生效
 ```
 
-> 前置：脚本用 `jq` 解析 stdin JSON，请先安装 jq。
+> 前置：脚本用 Python 标准库解析 stdin JSON，无需安装 jq。
 
 **验收**：新开会话，让 AI 改 `tests/` 下任一文件 → 被 hook 拦下并提示原因。
 
