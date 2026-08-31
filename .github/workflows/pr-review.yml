@@ -1,0 +1,84 @@
+name: pr-review
+
+# 05 部署 · AI 进入 PR 审查循环
+#
+# 分工：
+#   · REVIEW.md = 尺子（人写一次，每月调优）
+#   · 这个 workflow = 开 PR 自动举尺量的人
+#   · code owner = 最终拍板的人（走分支保护，AI 不批准）
+#
+# 前置：在仓库 Settings → Secrets 配 QODER_PERSONAL_ACCESS_TOKEN
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Qoder CLI
+        run: curl -fsSL https://qoder.com/install | bash
+
+      - name: Prepare diff
+        id: diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > pr.diff
+          echo "bytes=$(wc -c < pr.diff)" >> "$GITHUB_OUTPUT"
+
+      - name: Guard against oversized diff
+        if: steps.diff.outputs.bytes > 200000
+        run: |
+          echo "diff 过大（${{ steps.diff.outputs.bytes }} 字节），跳过自动审查，请人工评审。" \
+            >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
+      - name: Run AI review
+        id: review
+        env:
+          QODER_PERSONAL_ACCESS_TOKEN: ${{ secrets.QODER_PERSONAL_ACCESS_TOKEN }}
+        run: |
+          # 提示词引用仓库里的 REVIEW.md —— 标准变更只需改那一处
+          {
+            cat .github/prompts/review.md
+            echo ""
+            echo "--- 以下是本次 PR 的 diff ---"
+            cat pr.diff
+          } > /tmp/review-prompt.txt
+
+          qodercli -p "$(cat /tmp/review-prompt.txt)" \
+            --output-format=json \
+            --max-turns=6 \
+            --model=performance \
+            --allowed-tools 'Read,Grep,Glob' > review-raw.json || true
+
+          # 取出文本结果（不同版本字段名可能不同，做兼容）
+          jq -r '.result // .content // .text // tostring' review-raw.json > review.md
+          echo "已生成审查结果（$(wc -l < review.md) 行）"
+
+      - name: Post findings as PR comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "## AI 审查（按 REVIEW.md）"
+            echo ""
+            echo "> 发现项仅供参考，**不阻塞也不批准合并** —— 由 code owner 通过分支保护定夺。"
+            echo ""
+            cat review.md
+          } > comment.md
+          gh pr comment ${{ github.event.pull_request.number }} --body-file comment.md
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-review-${{ github.event.pull_request.number }}
+          path: review.md

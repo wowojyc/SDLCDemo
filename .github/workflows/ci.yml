@@ -1,0 +1,29 @@
+name: ci
+
+# 最基础的 CI：每次 push / PR 都跑测试和 lint
+# 这是整套自动化的地基 —— 没有它，后面所有门禁都没有意义
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Test
+        run: make test
+
+      - name: Lint
+        run: make lint

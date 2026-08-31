@@ -1,0 +1,103 @@
+name: maintenance-scan
+
+# 06 维护 · 闭环（bands 的落地）
+#
+# 三段式，对应 bands.yaml：
+#   1σ 内        → 只记日志
+#   越出 2σ      → 唤起 AI 做只读诊断（给结论，不改东西）
+#   越出 3σ      → 可行动（开 Issue / 开 PR），但仍走审查门
+#
+# 铁律：**检测保持确定性**（scripts/detect_drift.py 算，不用 AI 判断有没有越界）。
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      value:
+        description: '手动指定当前指标值（用来测试分档，如 0.35）'
+        required: false
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      tier: ${{ steps.detect.outputs.tier }}
+      summary: ${{ steps.detect.outputs.summary }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 确定性检测（无 AI 参与）
+        id: detect
+        run: |
+          VALUE="${{ github.event.inputs.value }}"
+          if [ -z "$VALUE" ]; then
+            VALUE=$(jq -r '.values[-1]' metrics/ci_test_failure_rate.json)
+          fi
+          echo "当前值：$VALUE"
+
+          python scripts/detect_drift.py \
+            --metric ci_test_failure_rate \
+            --value "$VALUE" \
+            --history-file metrics/ci_test_failure_rate.json \
+            > drift.json || true
+
+          cat drift.json
+          echo "tier=$(jq -r '.tier' drift.json)" >> "$GITHUB_OUTPUT"
+          echo "summary=$(jq -r '.reason' drift.json)" >> "$GITHUB_OUTPUT"
+
+      - name: 归档检测结果
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: drift.json
+
+  diagnose:
+    needs: detect
+    if: needs.detect.outputs.tier == '2sigma'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Qoder CLI
+        run: curl -fsSL https://qoder.com/install | bash
+      - name: 只读诊断
+        env:
+          QODER_PERSONAL_ACCESS_TOKEN: ${{ secrets.QODER_PERSONAL_ACCESS_TOKEN }}
+        run: |
+          qodercli -p "本仓库 CI 测试失败率出现异常漂移：${{ needs.detect.outputs.summary }}。
+          请只做**只读调查**：查看最近的测试代码与 CI 配置，给出可能原因和排查建议。
+          不要修改任何文件。" \
+            --allowed-tools 'Read,Grep,Glob' \
+            --output-format=json --max-turns=6 > diagnose.json || true
+          jq -r '.result // .content // .text // tostring' diagnose.json \
+            >> "$GITHUB_STEP_SUMMARY"
+
+  act:
+    needs: detect
+    if: needs.detect.outputs.tier == '3sigma'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: 开一个 Issue（走人的分诊队列）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "指标越界：ci_test_failure_rate（${{ needs.detect.outputs.summary }}）" \
+            --body "由 maintenance-scan 自动检测发现（确定性脚本判定，非 AI 判断）。
+
+          检测结论：${{ needs.detect.outputs.summary }}
+
+          请人工分诊：**现在修 / 排期 / 忽略**。
+          若是共性问题，请按 intent/intent.md 的六字段写成新需求，重新走 01→06 流程。
+          修复上线后，记得补一条 eval（evals/）。" \
+            --label "auto-detected" || echo "（label 不存在，已忽略）"

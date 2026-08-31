@@ -1,0 +1,66 @@
+name: agent-evals
+
+# 04 测试 · CI 中的持续评估
+#
+# 评的不是"产品功能对不对"，而是"AI 写码的能力有没有退化"。
+# 因为这些配置在"驾驶"AI（AGENTS.md / .qoder/rules / hooks），
+# 所以配置一变就要像测代码一样做回归。
+#
+# 两类触发：配置变更（谁改谁先过考）+ 每天定时兜底。
+# 前置：Secrets 配 QODER_PERSONAL_ACCESS_TOKEN
+
+on:
+  pull_request:
+    paths: ['AGENTS.md', '.qoder/**', 'Makefile']
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-dev.txt
+          sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Install Qoder CLI
+        run: curl -fsSL https://qoder.com/install | bash
+
+      - name: Run eval suite
+        env:
+          QODER_PERSONAL_ACCESS_TOKEN: ${{ secrets.QODER_PERSONAL_ACCESS_TOKEN }}
+        run: |
+          failed=0
+          total=0
+          for eval_file in evals/*.json; do
+            total=$((total+1))
+            prompt=$(jq -r '.prompt' "$eval_file")
+
+            echo "=== 运行 eval: $eval_file ==="
+            # 非交互跑真实任务；工具集受限，避免副作用
+            qodercli -p "$prompt" \
+              --allowed-tools 'Read,Edit,Bash(make test)' \
+              --output-format=json \
+              --max-turns=8 > result.json 2>/dev/null || true
+
+            if ! ./evals/check.sh "$eval_file" result.json; then
+              failed=$((failed+1))
+              echo "::warning file=$eval_file::该 eval 未通过"
+            fi
+          done
+
+          echo "总计 $total 个 eval，失败 $failed 个" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$failed" -gt 0 ]; then
+            echo "通过率下降，请先评审配置变更再合并。" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
