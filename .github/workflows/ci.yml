@@ -29,6 +29,19 @@ jobs:
       - name: Lint
         run: make lint
 
+      - name: 覆盖率摘要
+        run: |
+          python - <<'PYEOF' >> "$GITHUB_STEP_SUMMARY"
+          import xml.etree.ElementTree as ET
+          root = ET.parse('coverage.xml').getroot()
+          print(f"## 测试覆盖率：{float(root.get('line-rate')) * 100:.0f}%")
+          print()
+          print("| 文件 | 覆盖率 |")
+          print("|---|---|")
+          for cls in root.iter('class'):
+              print(f"| {cls.get('filename')} | {float(cls.get('line-rate')) * 100:.0f}% |")
+          PYEOF
+
       - name: 上传覆盖率报告
         uses: actions/upload-artifact@v4
         with:
