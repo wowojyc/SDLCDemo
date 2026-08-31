@@ -54,8 +54,9 @@ def detect(values: list[float], current: float) -> dict:
 
     # 单调漂移检测：最近 6 点是否持续同向
     recent = values[-6:] + [current]
-    drift = (len(recent) >= 6 and all(b > a for a, b in pairwise(recent))) or all(
-        b < a for a, b in pairwise(recent)
+    drift = len(recent) >= 6 and (
+        all(b > a for a, b in pairwise(recent))
+        or all(b < a for a, b in pairwise(recent))
     )
 
     if level >= 3:
