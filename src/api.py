@@ -27,7 +27,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self) -> None:  # noqa: N802 - http.server 约定的方法名
+    def do_GET(self) -> None:
         if urlparse(self.path).path != "/todos":
             self.send_error(404)
             return
@@ -39,7 +39,7 @@ class Handler(BaseHTTPRequestHandler):
             ],
         )
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         if urlparse(self.path).path != "/todos":
             self.send_error(404)
             return

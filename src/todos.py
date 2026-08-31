@@ -5,9 +5,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Iterable
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -19,7 +19,7 @@ class Todo:
     priority: int = 0
     done: bool = False
     created_at: str = field(
-        default_factory=lambda: datetime.now().isoformat(timespec="seconds")
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
     )
 
 

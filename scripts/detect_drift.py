@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """确定性漂移检测 —— bands.yaml 的"检测"环节。
 
 关键设计（对应 06.1 原文）：
@@ -30,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from itertools import pairwise
 from pathlib import Path
 from statistics import mean, pstdev
 
@@ -54,9 +54,9 @@ def detect(values: list[float], current: float) -> dict:
 
     # 单调漂移检测：最近 6 点是否持续同向
     recent = values[-6:] + [current]
-    drift = len(recent) >= 6 and all(
-        b > a for a, b in zip(recent, recent[1:])
-    ) or all(b < a for a, b in zip(recent, recent[1:]))
+    drift = (len(recent) >= 6 and all(b > a for a, b in pairwise(recent))) or all(
+        b < a for a, b in pairwise(recent)
+    )
 
     if level >= 3:
         tier, action = "3sigma", "act"
