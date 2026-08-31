@@ -2,6 +2,7 @@
   "_说明": "Mock eval：用于验证 agent-evals 的「远端 LLM → 补丁 → 确定性检查」链路。真实 eval 从近期工作里捞出来后替换本文件。",
   "name": "mock：给 api 的 main 函数补 docstring",
   "prompt": "在 src/api.py 的 main 函数（def main() -> None）函数体第一行添加 docstring：\"\"\"启动 HTTP 服务。\"\"\"。只做这一处改动，保持其他代码不变。",
+  "files": ["src/api.py"],
   "checks": [
     { "type": "command_succeeds", "value": "make test", "_说明": "既有测试仍然全绿（行为不变）" },
     { "type": "command_succeeds", "value": "make lint", "_说明": "代码风格不漂移" },

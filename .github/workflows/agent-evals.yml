@@ -55,6 +55,12 @@ jobs:
               echo "你是资深工程师。请完成下面的任务。"
               echo "要求：只输出一个可应用的 unified diff（git diff 格式），并必须用 \`\`\`diff 代码块包裹，不要输出任何解释。"
               echo "任务：$prompt"
+              echo ""
+              echo "--- 相关文件内容（供你生成准确 diff）---"
+              for f in $(jq -r '.files[]?' "$eval_file"); do
+                echo "===== $f ====="
+                cat "$f" 2>/dev/null || echo "（文件不存在）"
+              done
             } > /tmp/eval-prompt.txt
 
             jq -n --arg model "$LLM_MODEL" --rawfile content /tmp/eval-prompt.txt \
@@ -77,11 +83,11 @@ jobs:
               echo "::warning::模型未产出可应用补丁，该 eval 视为未通过（模型输出前 200 字：$(head -c 200 /tmp/model-output.txt)）"
             fi
 
-            if ! ./evals/check.sh "$eval_file" result.json; then
+            if ! bash evals/check.sh "$eval_file" result.json; then
               failed=$((failed+1))
               echo "::warning file=$eval_file::该 eval 未通过"
             fi
-            git reset --hard HEAD 2>/dev/null || true
+            git reset --hard HEAD >/dev/null 2>&1 || true
           done
 
           echo "总计 $total 个 eval，失败 $failed 个" >> "$GITHUB_STEP_SUMMARY"
