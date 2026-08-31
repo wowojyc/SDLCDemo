@@ -13,14 +13,15 @@ pass=0
 fail=0
 
 # 1) 拿 eval 里声明的测试命令，逐个跑一遍
-for cmd in $(jq -r '.checks[] | select(.type=="command_succeeds") | .value' "$EVAL_FILE"); do
+# 注意：必须按行读取（while read），不能 for cmd in $(...) —— 那会把 "make test" 拆成两个命令
+while IFS= read -r cmd; do
   if eval "$cmd" > /dev/null 2>&1; then
     pass=$((pass+1))
   else
     echo "FAIL: $cmd"
     fail=$((fail+1))
   fi
-done
+done < <(jq -r '.checks[] | select(.type=="command_succeeds") | .value' "$EVAL_FILE")
 
 # 2) 文件包含检查
 while IFS= read -r line; do
