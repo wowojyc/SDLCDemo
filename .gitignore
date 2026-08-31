@@ -6,3 +6,5 @@ __pycache__/
 venv/
 .env
 .qoder/settings.local.json
+.coverage
+coverage.xml

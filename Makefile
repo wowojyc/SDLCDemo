@@ -4,7 +4,7 @@ install:
 	pip install -r requirements-dev.txt
 
 test:
-	@python -m pytest -q && mkdir -p .git && touch .git/sdlc-test-run
+	@python -m pytest --cov=src --cov-report=term-missing --cov-report=xml -q && mkdir -p .git && touch .git/sdlc-test-run
 	@echo "（已记录：本次会话跑过测试 —— 供 Stop hook 校验）"
 
 lint:
