@@ -52,7 +52,8 @@ jobs:
             echo "=== 运行 eval: $eval_file ==="
             # 让远端 LLM 产出可应用的补丁（OpenAI 兼容协议）
             {
-              echo "你是资深工程师。请完成下面的任务，只输出可应用的 unified diff（git diff 格式，用 \`\`\`diff 代码块包裹），不要解释。"
+              echo "你是资深工程师。请完成下面的任务。"
+              echo "要求：只输出一个可应用的 unified diff（git diff 格式），并必须用 \`\`\`diff 代码块包裹，不要输出任何解释。"
               echo "任务：$prompt"
             } > /tmp/eval-prompt.txt
 
@@ -63,14 +64,17 @@ jobs:
                 -H "Content-Type: application/json" \
                 -d @- > result.json
 
-            # 提取 ```diff 代码块并应用
+            # 提取模型输出：兼容 ```diff / ```patch 围栏，无围栏时找裸 diff
             jq -r '.choices[0].message.content // empty' result.json > /tmp/model-output.txt
-            awk '/^```diff/{flag=1; next} /^```/{flag=0} flag' /tmp/model-output.txt > /tmp/change.patch
-            if [ -s /tmp/change.patch ] && git apply --check /tmp/change.patch 2>/dev/null; then
-              git apply /tmp/change.patch
+            awk '/^```(diff|patch)/{flag=1; next} /^```/{flag=0} flag' /tmp/model-output.txt > /tmp/change.patch
+            if [ ! -s /tmp/change.patch ]; then
+              awk '/^diff --git/{flag=1} flag' /tmp/model-output.txt > /tmp/change.patch
+            fi
+            if [ -s /tmp/change.patch ] && git apply --check --recount /tmp/change.patch 2>/dev/null; then
+              git apply --recount /tmp/change.patch
               echo "已应用模型补丁（$(wc -l < /tmp/change.patch) 行）"
             else
-              echo "::warning::模型未产出可应用补丁，该 eval 视为未通过"
+              echo "::warning::模型未产出可应用补丁，该 eval 视为未通过（模型输出前 200 字：$(head -c 200 /tmp/model-output.txt)）"
             fi
 
             if ! ./evals/check.sh "$eval_file" result.json; then
