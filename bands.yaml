@@ -1,0 +1,27 @@
+# 越界闭环层级（bands.yaml）
+# 谁写：工程负责人联合变更管理 / 合规，版本化配置。
+# 放哪：仓库内，进版本控制。
+# 怎么触发：触发器层唤起（CI 定时 workflow / 监控栈 webhook / 内网 Cron）；只有越界才唤起 Claude。
+# 原则：检测保持确定性（不用 AI 判断"有没有越界"）；层级决定 Claude 能做什么（1σ 日志 / 2σ 只读诊断 / 3σ 可行动）。
+
+metric: <指标名，例如 ci_test_failure_rate>
+baseline: rolling_30d          # 基线窗口：<滚动 30 天 / 固定窗口>
+rules: western_electric        # 判异规则：<western_electric / 自定义阈值>
+
+tiers:
+  1sigma:
+    action: log                # 只记录，不动作
+  2sigma:
+    action: diagnose           # 只读诊断，给结论
+    tools: "Read,Grep,Bash(gh run view *)"
+  3sigma:
+    action: propose            # 可行动，但只开 PR 走审查门，不直接改生产
+    routes:
+      - pull_request
+      - runbook: rollback-deploy
+
+---
+# 填写提示（填完可删）
+# · 3σ 也只是"开 PR 走审查门"，不直接推生产——AI 权限止步于生产门禁之前。
+# · 发现是共性问题：写回一份新的 intent.md，重新走流水线（这就是整门课的闭环）。
+# · 座舱场景示例指标：车机冷启动耗时、语音首字延迟、OTA 升级失败率（按你们实际监控项改）。

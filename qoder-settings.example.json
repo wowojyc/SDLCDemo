@@ -1,0 +1,92 @@
+{
+  "_说明": [
+    "Qoder 的 hooks + permissions 配置示例。",
+    "放置位置（二选一，按你用的产品线）：",
+    "  · Qoder CLI：~/.qoder/settings.json（用户级）或 .qoder/settings.json（项目级，可提交 git 团队共享）",
+    "  · QoderWork CN：~/.qoderwork/settings.json（用户级）",
+    "注意：当前版本不支持热加载，改完配置需要重启 Qoder 才生效。",
+    "脚本依赖 jq 解析 stdin JSON，请先安装 jq。"
+  ],
+
+  "permissions": {
+    "_说明": "决策三态：allow 放行 / ask 询问（需人确认）/ deny 拒绝。headless(-p) 模式下 ask 会自动变成 deny。",
+    "allow": [
+      "Bash(make test)",
+      "Bash(make lint)",
+      "Bash(git status)",
+      "Bash(git diff:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Read(./.env)",
+      "Read(./secrets/**)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(deploy:*)"
+    ]
+  },
+
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${project}/.qoder/hooks/session-start.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${project}/.qoder/hooks/block-dangerous.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${project}/.qoder/hooks/protect-tests.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${project}/.qoder/hooks/auto-lint.sh",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${project}/.qoder/hooks/verify-before-stop.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
