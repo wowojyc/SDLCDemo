@@ -1,0 +1,59 @@
+#!/bin/bash
+# pre-push —— push 之前，用【本地 Qoder】按 REVIEW.md 审一遍
+#
+# 为什么用本地：
+#   · 不用在 GitHub 配任何 token（认证用你本地已登录的 Qoder）
+#   · 快，不用等 GitHub 排队
+#   · 断网也能审（只要你本地模型通道可用）
+#
+# 取舍：只在你本地 push 时触发。
+#       别人在网页上给你开 PR 时不会触发 —— 那种情况才需要云端 workflow（可选）。
+#
+# 启用：git config core.hooksPath .githooks
+# 临时跳过：git push --no-verify
+
+set -e
+
+BASE="${SDLC_REVIEW_BASE:-main}"
+
+if ! git rev-parse --verify "$BASE" >/dev/null 2>&1; then
+  echo "[pre-push] 找不到基线分支 $BASE，跳过审查"
+  exit 0
+fi
+
+diff_content=$(git diff "$BASE"...HEAD)
+if [ -z "$diff_content" ]; then
+  echo "[pre-push] 没有改动，跳过审查"
+  exit 0
+fi
+
+# 没装 qodercli 就静默跳过，不阻塞 push
+if ! command -v qodercli >/dev/null 2>&1; then
+  echo "[pre-push] 未检测到 qodercli，跳过 AI 审查（装好后自动生效）"
+  exit 0
+fi
+
+echo "[pre-push] 正在用本地 Qoder 按 REVIEW.md 审查改动..."
+
+{
+  cat .github/prompts/review.md
+  echo ""
+  echo "--- 以下是本次要推送的 diff ---"
+  echo "$diff_content"
+} > /tmp/sdlc-review-prompt.txt
+
+result=$(qodercli -p "$(cat /tmp/sdlc-review-prompt.txt)" \
+  --allowed-tools 'Read,Grep,Glob' --max-turns 6 2>/dev/null || true)
+
+echo "$result"
+
+# 只有 Important 级问题才阻断；Nit 仅提示，不拦人
+if echo "$result" | grep -qiE '\|\s*Important|##\s*Important|\*\*Important\*\*'; then
+  echo ""
+  echo "[pre-push] 发现 Important 级问题，已中止 push。"
+  echo "          修复后重新 push；确需跳过：git push --no-verify"
+  exit 1
+fi
+
+echo "[pre-push] 审查通过"
+exit 0
