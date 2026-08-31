@@ -1,6 +1,6 @@
 import pytest
 
-from src.todos import Todo, add, complete, pending, sorted_by_priority
+from src.todos import Todo, add, clean_tags, complete, completed, filter_by_tag, pending, sorted_by_priority
 
 
 def test_add_assigns_incrementing_ids():
@@ -39,3 +39,54 @@ def test_pending_excludes_done():
     complete(todos, a.id)
     add(todos, "还没做", priority=1)
     assert [t.title for t in pending(todos)] == ["还没做"]
+
+
+def test_add_stores_tags_lowercased_stripped_deduped():
+    todos: list[Todo] = []
+    t = add(todos, "写周报", tags=["工作", " 工作 ", "Work"])
+    assert t.tags == ["工作", "work"]
+
+
+def test_add_cleans_before_limit_check():
+    # 6 个原始标签，去重后只剩 3 个，不报错
+    t = add([], "标题", tags=["a", "a", "b", "b", "c", "c"])
+    assert t.tags == ["a", "b", "c"]
+
+
+def test_add_rejects_more_than_max_tags():
+    with pytest.raises(ValueError):
+        add([], "标题", tags=["a", "b", "c", "d"])
+
+
+def test_add_blank_tags_ignored():
+    t = add([], "标题", tags=["  ", "", "  "])
+    assert t.tags == []
+
+
+def test_clean_tags_normalizes():
+    assert clean_tags([" 工作 ", "WORK", "工作", ""]) == ["工作", "work"]
+
+
+def test_filter_by_tag_case_insensitive_and_sorted():
+    todos: list[Todo] = []
+    add(todos, "低优先", tags=["Work"])
+    add(todos, "高优先", tags=["work"], priority=5)
+    assert [t.title for t in filter_by_tag(todos, "WORK")] == ["高优先", "低优先"]
+
+
+def test_filter_by_tag_excludes_untagged_and_blank():
+    todos: list[Todo] = []
+    add(todos, "无标签")
+    add(todos, "有标签", tags=["家里"])
+    assert [t.title for t in filter_by_tag(todos, "家里")] == ["有标签"]
+    assert filter_by_tag(todos, "   ") == []
+
+
+def test_completed_returns_only_done_sorted():
+    todos: list[Todo] = []
+    a = add(todos, "完成的高优先", priority=9)
+    complete(todos, a.id)
+    add(todos, "未完成", priority=5)
+    b = add(todos, "完成的低优先")
+    complete(todos, b.id)
+    assert [t.title for t in completed(todos)] == ["完成的高优先", "完成的低优先"]
