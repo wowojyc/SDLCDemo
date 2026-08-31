@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>待办清单</title>
+<style>
+  :root { --border: #e2e8f0; --muted: #64748b; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, "Microsoft YaHei", sans-serif; max-width: 640px; margin: 0 auto; padding: 24px 16px; color: #0f172a; }
+  h1 { font-size: 1.4rem; margin-top: 0; }
+  form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  input { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; }
+  #title { flex: 2; min-width: 200px; }
+  #tags { flex: 1; min-width: 160px; }
+  button { padding: 8px 14px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+  #filter { width: 100%; margin-bottom: 4px; }
+  section { margin-top: 20px; }
+  h2 { font-size: 1rem; color: var(--muted); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li { display: flex; align-items: center; gap: 8px; padding: 10px 4px; border-bottom: 1px dashed var(--border); }
+  .tag { font-size: 0.75rem; background: #eef2ff; color: #4f46e5; border-radius: 999px; padding: 2px 8px; }
+  .done .title { color: var(--muted); text-decoration: line-through; }
+  .complete-btn { margin-left: auto; background: #10b981; font-size: 0.85rem; }
+  .complete-btn:hover { background: #059669; }
+  #message { color: #dc2626; min-height: 1.2em; font-size: 0.9rem; margin: 0; }
+  .empty { color: var(--muted); font-size: 0.9rem; padding: 8px 4px; }
+</style>
+</head>
+<body>
+  <h1>待办清单</h1>
+  <form id="add-form">
+    <input id="title" placeholder="要做什么？" required>
+    <input id="tags" placeholder="标签，逗号分隔（最多 3 个）">
+    <button type="submit">新增</button>
+  </form>
+  <input id="filter" placeholder="按标签筛选（回车应用，留空回车恢复全部）">
+  <p id="message"></p>
+
+  <section>
+    <h2>未完成</h2>
+    <ul id="pending-list"></ul>
+  </section>
+  <section>
+    <h2>已完成</h2>
+    <ul id="done-list"></ul>
+  </section>
+
+<script>
+const pendingList = document.getElementById("pending-list");
+const doneList = document.getElementById("done-list");
+const message = document.getElementById("message");
+
+function emptyItem(text) {
+  const li = document.createElement("li");
+  li.className = "empty";
+  li.textContent = text;
+  return li;
+}
+
+function renderItem(todo, done) {
+  const li = document.createElement("li");
+  if (done) li.className = "done";
+  const title = document.createElement("span");
+  title.className = "title";
+  title.textContent = todo.title;
+  li.appendChild(title);
+  (todo.tags || []).forEach(t => {
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = t;
+    li.appendChild(tag);
+  });
+  if (!done) {
+    const btn = document.createElement("button");
+    btn.className = "complete-btn";
+    btn.textContent = "完成";
+    btn.addEventListener("click", () => completeTodo(todo.id));
+    li.appendChild(btn);
+  }
+  return li;
+}
+
+async function load() {
+  const [pending, done] = await Promise.all([
+    fetch("/todos").then(r => r.json()),
+    fetch("/todos?done=true").then(r => r.json()),
+  ]);
+  pendingList.replaceChildren();
+  doneList.replaceChildren();
+  if (!pending.length) pendingList.appendChild(emptyItem("还没有未完成待办"));
+  pending.forEach(t => pendingList.appendChild(renderItem(t, false)));
+  if (!done.length) doneList.appendChild(emptyItem("还没有已完成待办"));
+  done.forEach(t => doneList.appendChild(renderItem(t, true)));
+}
+
+async function addTodo(e) {
+  e.preventDefault();
+  message.textContent = "";
+  const title = document.getElementById("title").value.trim();
+  const tags = document.getElementById("tags").value
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+  if (tags.length > 3) {
+    message.textContent = "标签最多 3 个";
+    return;
+  }
+  const resp = await fetch("/todos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, tags }),
+  });
+  if (!resp.ok) {
+    const data = await resp.json();
+    message.textContent = (data.error && data.error.message) || "新增失败";
+    return;
+  }
+  document.getElementById("title").value = "";
+  document.getElementById("tags").value = "";
+  await load();
+}
+
+async function completeTodo(id) {
+  message.textContent = "";
+  const resp = await fetch(`/todos/${id}/complete`, { method: "POST" });
+  if (!resp.ok) {
+    const data = await resp.json();
+    message.textContent = (data.error && data.error.message) || "操作失败";
+    return;
+  }
+  await load();
+}
+
+document.getElementById("add-form").addEventListener("submit", addTodo);
+
+const filter = document.getElementById("filter");
+filter.addEventListener("keydown", async e => {
+  if (e.key !== "Enter") return;
+  message.textContent = "";
+  const tag = filter.value.trim();
+  if (!tag) {
+    await load();
+    return;
+  }
+  const items = await fetch("/todos?tag=" + encodeURIComponent(tag)).then(r => r.json());
+  pendingList.replaceChildren();
+  if (!items.length) pendingList.appendChild(emptyItem("没有匹配的待办"));
+  items.forEach(t => pendingList.appendChild(renderItem(t, false)));
+});
+
+load();
+</script>
+</body>
+</html>
