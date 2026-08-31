@@ -1,6 +1,15 @@
 import pytest
 
-from src.todos import Todo, add, clean_tags, complete, completed, filter_by_tag, pending, sorted_by_priority
+from src.todos import (
+    Todo,
+    add,
+    clean_tags,
+    complete,
+    completed,
+    filter_by_tag,
+    pending,
+    sorted_by_priority,
+)
 
 
 def test_add_assigns_incrementing_ids():

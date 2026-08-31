@@ -7,11 +7,11 @@ import json
 
 import pytest
 
-from src.api import Handler, _TODOS
+from src.api import _TODOS, Handler
 
 
 class _SilentHandler(Handler):
-    def log_message(self, *args) -> None:  # noqa: ANN001
+    def log_message(self, *args) -> None:
         pass
 
 
