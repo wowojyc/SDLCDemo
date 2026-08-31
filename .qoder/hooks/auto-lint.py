@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """PostToolUse(Write|Edit) —— 写完 .py 自动跑 lint。
 
 对应 03.5：「改完即格式化/lint，别让代码风格漂移累积」。

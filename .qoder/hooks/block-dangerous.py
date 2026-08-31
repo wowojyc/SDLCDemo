@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """PreToolUse(Bash) —— 拦截危险命令。
 
 对应 03.5「构建时的硬防护」：确定性拦截，不依赖模型理解。

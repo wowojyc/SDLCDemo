@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Qoder hook 公共工具：读取 IDE 注入的 stdin JSON。
 
 IDE 以 `bash -c "python .qoder/hooks/xxx.py"` 方式执行 hook，

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """PreToolUse(Write|Edit) —— 拦截修改测试文件。
 
 这是"反馈闭环"的保险丝：防止 Agent 为了让测试变绿而去改测试。
