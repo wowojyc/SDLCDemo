@@ -96,6 +96,9 @@ git config core.hooksPath .githooks   # 启用提交前兜底
 **验收**：spec 有关注点；plan 有文件清单 + 证明方式。你接受后才进下一关。
 
 ### Gate 3 · 写码 + 自验
+```bash
+git checkout -b feat/待办标签   # 先建 feature 分支，本关所有提交都落在这个分支
+```
 ```
 按 plan.md 实现。每改完一个文件就跑 make test。
 全部完成后跑 make test 和 make lint，把原始输出贴在你的总结里。
@@ -107,7 +110,13 @@ git config core.hooksPath .githooks   # 启用提交前兜底
 - [ ] **故意埋一个失败测试** → AI 是改代码还是改测试？（改代码才对；改测试说明 hook 没生效）
 
 ### Gate 4 · 评审
-提交 PR，`.github/workflows/pr-review.yml` 自动跑：读 `REVIEW.md` → AI 审 → 贴评论。
+```bash
+git push origin feat/待办标签   # 推送 feature 分支（不是 main）
+# 网页上开 PR：feat/待办标签 → main，触发 ci.yml + pr-review.yml
+```
+> 注意：直接 push main 无法开 PR（main→main 无 diff），`pr-review.yml` 不会触发，评审环节会被绕过。
+
+`.github/workflows/pr-review.yml` 自动跑：读 `REVIEW.md` → AI 审 → 贴评论。
 在仓库 Settings → Secrets 配 `LLM_API_KEY`（硅基流动，https://cloud.siliconflow.com 获取）。
 不配则云端审查自动跳过（不是失败），本地 pre-push 审查不受影响。
 
