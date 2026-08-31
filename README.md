@@ -157,3 +157,5 @@ Actions 里 `maintenance-scan` 每天 03:00 跑；也可手动触发并传 value
 ---
 
 *方法论来自 Anthropic《The AI-Native SDLC Playbook》；Qoder 能力信息来自 docs.qoder.com 与阿里云帮助中心公开文档（2026-08）。*
+
+<!-- 云端 AI 审查验证用占位行（验证后此 PR 关闭，不合并） -->
