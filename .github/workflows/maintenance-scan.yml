@@ -11,7 +11,9 @@ name: maintenance-scan
 
 on:
   schedule:
-    - cron: '0 3 * * *'
+    # 注意：cron 用的是 UTC 时间。
+    # UTC 19:00 = 北京时间次日 03:00
+    - cron: '0 19 * * *'
   workflow_dispatch:
     inputs:
       value:

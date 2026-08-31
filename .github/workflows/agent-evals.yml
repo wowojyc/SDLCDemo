@@ -13,7 +13,8 @@ on:
   pull_request:
     paths: ['AGENTS.md', '.qoder/**', 'Makefile']
   schedule:
-    - cron: '0 2 * * *'
+    # cron 用 UTC：UTC 18:00 = 北京时间次日 02:00
+    - cron: '0 18 * * *'
   workflow_dispatch:
 
 jobs:
