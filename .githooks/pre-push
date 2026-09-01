@@ -34,8 +34,11 @@ QODERCLI_JS=""
 for cli in qoderclicn qodercli; do
   CLI_BIN=$(command -v "$cli" 2>/dev/null || true)
   [ -z "$CLI_BIN" ] && continue
-  CLI_JS_MSYS="${CLI_BIN%/*}/node_modules/@qodercn-ai/qoderclicn/bundle/qoderclicn.js"
-  [ -f "$CLI_JS_MSYS" ] || CLI_JS_MSYS="${CLI_BIN%/*}/node_modules/@qoder-ai/qodercli/bundle/qodercli.js"
+  # 每个 CLI 只找自己 npm 包里的 bundle，找不到就换下一个 CLI
+  case "$cli" in
+    qoderclicn) CLI_JS_MSYS="${CLI_BIN%/*}/node_modules/@qodercn-ai/qoderclicn/bundle/qoderclicn.js" ;;
+    qodercli)   CLI_JS_MSYS="${CLI_BIN%/*}/node_modules/@qoder-ai/qodercli/bundle/qodercli.js" ;;
+  esac
   if [ -f "$CLI_JS_MSYS" ]; then
     QODERCLI_JS="$CLI_JS_MSYS"
     break
@@ -43,6 +46,11 @@ for cli in qoderclicn qodercli; do
 done
 if [ -z "$QODERCLI_JS" ]; then
   echo "[pre-push] 未检测到 qodercli/qoderclicn，跳过 AI 审查（装好后自动生效）"
+  exit 0
+fi
+# 审查标准缺失时优雅降级，不硬失败
+if ! [ -f .github/prompts/review.md ]; then
+  echo "[pre-push] 缺少 .github/prompts/review.md，跳过 AI 审查"
   exit 0
 fi
 # MSYS 路径（/c/xxx）转 Windows 风格（c:/xxx），node 才能解析
@@ -63,7 +71,8 @@ result=$(node "$QODERCLI_JS" -p "$(</tmp/sdlc-review-prompt.txt)" \
 echo "$result"
 
 # 只有 Important 级问题才阻断；Nit 仅提示，不拦人
-if [[ "$result" == *"Important"* ]]; then
+# 限定在 markdown 标题/表格上下文，避免正文提到 Important 也误拦
+if [[ "$result" =~ |[[:space:]]*Important|##[[:space:]]*Important|**Important** ]]; then
   echo ""
   echo "[pre-push] 发现 Important 级问题，已中止 push。"
   echo "          修复后重新 push；确需跳过：git push --no-verify"

@@ -21,6 +21,14 @@ import sys
 from hook_common import read_input
 
 
+def _try_remove(path: str) -> None:
+    """尽力删除标记文件，失败静默（标记本就可选）。"""
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
 def main() -> int:
     """只读回合放行；改过文件的回合必须通过测试才能停止。"""
     data = read_input()
@@ -34,8 +42,10 @@ def main() -> int:
     changed_marker = os.path.join(git_dir, "sdlc-changed")
     test_marker = os.path.join(git_dir, "sdlc-test-run")
 
-    # 会话只读（没 Write/Edit 过任何文件）→ 直接放行
+    # 会话只读（没 Write/Edit 过任何文件）→ 直接放行，
+    # 但清理可能残留的测试标记（只读会话里手动跑过 make test 的场景）
     if not os.path.exists(changed_marker):
+        _try_remove(test_marker)
         return 0
 
     if not os.path.exists(test_marker):
@@ -45,11 +55,8 @@ def main() -> int:
 
     # 通过后删除两个标记：等效替代 SessionStart 的清标记职责，
     # 让下一个会话从"未测试"状态开始
-    for marker in (test_marker, changed_marker):
-        try:
-            os.remove(marker)
-        except OSError:
-            pass
+    _try_remove(test_marker)
+    _try_remove(changed_marker)
     return 0
 
 
