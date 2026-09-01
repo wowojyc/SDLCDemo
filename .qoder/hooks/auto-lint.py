@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from hook_common import read_input
+from hook_common import read_input, try_remove
 
 
 def main() -> int:
@@ -29,6 +29,9 @@ def main() -> int:
     marker = Path(cwd) / ".git" / "sdlc-changed"
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.touch(mode=0o644)
+    # 新改动使旧测试结果失效：删掉 test-run 标记，
+    # 避免"测完再改"后被 Stop hook 误放行
+    try_remove(str(Path(cwd) / ".git" / "sdlc-test-run"))
 
     if not file_path.endswith(".py") or shutil.which("ruff") is None:
         return 0

@@ -18,15 +18,7 @@ exit 2 = 阻止 Agent 停止，stderr 作为消息注入对话让它继续工作
 import os
 import sys
 
-from hook_common import read_input
-
-
-def _try_remove(path: str) -> None:
-    """尽力删除标记文件，失败静默（标记本就可选）。"""
-    try:
-        os.remove(path)
-    except OSError:
-        pass
+from hook_common import read_input, try_remove
 
 
 def main() -> int:
@@ -45,7 +37,7 @@ def main() -> int:
     # 会话只读（没 Write/Edit 过任何文件）→ 直接放行，
     # 但清理可能残留的测试标记（只读会话里手动跑过 make test 的场景）
     if not os.path.exists(changed_marker):
-        _try_remove(test_marker)
+        try_remove(test_marker)
         return 0
 
     if not os.path.exists(test_marker):
@@ -55,8 +47,8 @@ def main() -> int:
 
     # 通过后删除两个标记：等效替代 SessionStart 的清标记职责，
     # 让下一个会话从"未测试"状态开始
-    _try_remove(test_marker)
-    _try_remove(changed_marker)
+    try_remove(test_marker)
+    try_remove(changed_marker)
     return 0
 
 

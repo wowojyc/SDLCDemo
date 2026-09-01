@@ -10,6 +10,7 @@ tool_name/tool_input 等）。
 """
 
 import json
+import os
 import sys
 import threading
 
@@ -34,3 +35,11 @@ def read_input(timeout: float = 5.0) -> dict:
         return json.loads(raw) if raw.strip() else {}
     except json.JSONDecodeError:
         return {}
+
+
+def try_remove(path: str) -> None:
+    """尽力删除标记文件，失败静默（标记本就可选）。"""
+    try:
+        os.remove(path)
+    except OSError:
+        pass

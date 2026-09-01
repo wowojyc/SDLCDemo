@@ -60,19 +60,23 @@ esac
 
 echo "[pre-push] 正在用本地 Qoder 按 REVIEW.md 审查改动..."
 
+# 临时文件放 .git 下（仓库隔离、覆盖写、无需清理；/tmp 全局共享且有符号链接风险）
+PROMPT_FILE=".git/sdlc-review-prompt.txt"
+
 {
   printf '%s\n' "$(<.github/prompts/review.md)"
   printf '\n--- 以下是本次要推送的 diff ---\n%s\n' "$diff_content"
-} > /tmp/sdlc-review-prompt.txt
+} > "$PROMPT_FILE"
 
-result=$(node "$QODERCLI_JS" -p "$(</tmp/sdlc-review-prompt.txt)" \
+result=$(node "$QODERCLI_JS" -p "$(<"$PROMPT_FILE")" \
   --allowed-tools 'Read,Grep,Glob' --max-turns 6 2>/dev/null || true)
 
 echo "$result"
 
 # 只有 Important 级问题才阻断；Nit 仅提示，不拦人
-# 限定在 markdown 标题/表格上下文，避免正文提到 Important 也误拦
-if [[ "$result" =~ |[[:space:]]*Important|##[[:space:]]*Important|**Important** ]]; then
+# glob 匹配限定 markdown 标题/表格/加粗上下文，避免正文提到 Important 也误拦
+# （不用 [[ =~ ]] 正则：裁剪版 bash 对 [*[:space:]*] 的 ]] 与 [[ 结束符冲突，行为不稳）
+if [[ "$result" == *"| Important"* || "$result" == *"## Important"* || "$result" == *"**Important**"* ]]; then
   echo ""
   echo "[pre-push] 发现 Important 级问题，已中止 push。"
   echo "          修复后重新 push；确需跳过：git push --no-verify"
