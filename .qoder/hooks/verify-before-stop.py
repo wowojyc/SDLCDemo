@@ -18,7 +18,6 @@ exit 2 = 阻止 Agent 停止，stderr 作为消息注入对话让它继续工作
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hook_common import read_input
 
 
@@ -27,6 +26,11 @@ def main() -> int:
     data = read_input()
     cwd = data.get("cwd") or os.getcwd()
     git_dir = os.path.join(cwd, ".git")
+
+    # 非 git 仓库（无 .git 目录）→ 无标记机制，直接放行
+    if not os.path.isdir(git_dir):
+        return 0
+
     changed_marker = os.path.join(git_dir, "sdlc-changed")
     test_marker = os.path.join(git_dir, "sdlc-test-run")
 
