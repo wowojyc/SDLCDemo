@@ -1,0 +1,11 @@
+{
+  "_说明": "真实 eval：src/api.py 的 _create_todo 对 priority 无边界校验——传非数字会在 todos.add 的 int() 处抛 ValueError 导致 HTTP 500，浮点/负数被静默接受。从近期代码走查中捞出，替换原 mock-docstring.json。",
+  "name": "给 POST /todos 的 priority 增加边界校验",
+  "prompt": "src/api.py 的 _create_todo 把 payload.get(\"priority\", 0) 直接传给 add()，add() 内部 int(priority) 在传入非数字（如 \"abc\"）时会抛 ValueError 导致 HTTP 500 崩溃。请在 _create_todo 里对 priority 增加边界校验：仅当 priority 已提供时检查，必须是 0-99 的整数（bool 除外），否则调用 self._error(400, \"invalid_priority\", \"priority 必须是 0-99 的整数\") 并 return。缺省或为 0 时保持现有成功路径不变，不要改动 src/todos.py 和现有测试。",
+  "files": ["src/api.py"],
+  "checks": [
+    { "type": "command_succeeds", "value": "make test", "_说明": "既有测试仍然全绿（行为不变）" },
+    { "type": "command_succeeds", "value": "make lint", "_说明": "代码风格不漂移" },
+    { "type": "file_contains", "path": "src/api.py", "value": "invalid_priority", "_说明": "确实加了 priority 边界拒绝" }
+  ]
+}
