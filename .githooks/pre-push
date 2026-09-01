@@ -74,9 +74,21 @@ result=$(node "$QODERCLI_JS" -p "$(<"$PROMPT_FILE")" \
 echo "$result"
 
 # 只有 Important 级问题才阻断；Nit 仅提示，不拦人
-# glob 匹配限定 markdown 标题/表格/加粗上下文，避免正文提到 Important 也误拦
-# （不用 [[ =~ ]] 正则：裁剪版 bash 对 [*[:space:]*] 的 ]] 与 [[ 结束符冲突，行为不稳）
-if [[ "$result" == *"| Important"* || "$result" == *"## Important"* || "$result" == *"**Important**"* ]]; then
+# 不能靠字符串匹配：AI 按 REVIEW.md 模板总是输出 "## Important" 标题（即使无发现）。
+# 用 python 提取 Important 段落，语义判断是否真有发现项。
+if printf '%s' "$result" | PYTHONUTF8=1 python -c '
+import re, sys
+text = sys.stdin.read()
+m = re.search(r"##\s*Important[^\n]*\n(.*?)(?=\n##\s|\Z)", text, re.S)
+body = (m.group(1) or "").strip() if m else ""
+# 发现项按 REVIEW.md 模板是 markdown 列表项（- [Bugs] 等）；
+# 段落无列表项（空/“无。”/“没有发现”）→ 无 Important 问题
+if re.search(r"(^|\n)\s*-\s+", body):
+    sys.exit(1)
+sys.exit(0)
+' >/dev/null 2>&1; then
+  : # 无 Important，放行
+else
   echo ""
   echo "[pre-push] 发现 Important 级问题，已中止 push。"
   echo "          修复后重新 push；确需跳过：git push --no-verify"
