@@ -4,10 +4,13 @@
   AGENTS.md 里的验证块是"软指令"（靠模型自觉），
   这个 hook 是"硬拦截"（确定性，不看模型心情）。
 
-判定依据：Makefile 的 test 目标在成功后会写入 .git/sdlc-test-run 标记。
+判定依据：
+  · .git/sdlc-changed   —— 会话内是否 Write/Edit 过文件（由 auto-lint.py 写）
+  · .git/sdlc-test-run  —— make test 成功后写入的标记
+只拦截「改过文件但没跑测试」的回合；纯讨论回合（只读）直接放行。
 IDE 不支持 SessionStart 事件，无法在会话开始清标记；因此改为在
 Stop 检查通过后主动删除标记——等效替代清标记职责，保证每个会话
-都从"未测试"状态开始，不跑 make test 就无法正常停止。
+都从"未测试"状态开始。
 
 exit 2 = 阻止 Agent 停止，stderr 作为消息注入对话让它继续工作。
 """
@@ -20,23 +23,30 @@ from hook_common import read_input
 
 
 def main() -> int:
-    """检查测试标记：不存在则阻止停止，存在则通过并删除标记。"""
+    """只读回合放行；改过文件的回合必须通过测试才能停止。"""
     data = read_input()
     cwd = data.get("cwd") or os.getcwd()
-    marker = os.path.join(cwd, ".git", "sdlc-test-run")
+    git_dir = os.path.join(cwd, ".git")
+    changed_marker = os.path.join(git_dir, "sdlc-changed")
+    test_marker = os.path.join(git_dir, "sdlc-test-run")
 
-    if not os.path.exists(marker):
-        print("本次会话还没有运行过测试。", file=sys.stderr)
+    # 会话只读（没 Write/Edit 过任何文件）→ 直接放行
+    if not os.path.exists(changed_marker):
+        return 0
+
+    if not os.path.exists(test_marker):
+        print("本次会话改过文件但还没有运行过测试。", file=sys.stderr)
         print("请先执行 make test 并确保全绿，再报告任务完成；", file=sys.stderr)
         print("并把命令的原始输出粘贴到你的总结里（不要只说'测试已通过'）。", file=sys.stderr)
         return 2
 
-    # 通过后删除标记：等效替代 SessionStart 的清标记职责，
+    # 通过后删除两个标记：等效替代 SessionStart 的清标记职责，
     # 让下一个会话从"未测试"状态开始
-    try:
-        os.remove(marker)
-    except OSError:
-        pass
+    for marker in (test_marker, changed_marker):
+        try:
+            os.remove(marker)
+        except OSError:
+            pass
     return 0
 
 
