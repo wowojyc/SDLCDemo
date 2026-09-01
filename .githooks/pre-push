@@ -27,23 +27,28 @@ if [ -z "$diff_content" ]; then
   exit 0
 fi
 
-# 定位 qodercli 的 JS 入口并直接用 node 执行。
+# 定位 Qoder CLI（中国版 qoderclicn 优先，国际版 qodercli 兜底）并直接用 node 执行。
 # 不用 sh 包装脚本：Windows npm 全局安装的包装脚本依赖 sed/dirname/uname，
 # 在裁剪过的 git-bash 环境里跑不起来（会让本地审查静默失效）。
-QODERCLI_BIN=$(command -v qodercli 2>/dev/null || true)
 QODERCLI_JS=""
-if [ -n "$QODERCLI_BIN" ]; then
-  QODERCLI_JS_MSYS="${QODERCLI_BIN%/*}/node_modules/@qoder-ai/qodercli/bundle/qodercli.js"
-  QODERCLI_JS="$QODERCLI_JS_MSYS"
-  # MSYS 路径（/c/xxx）转 Windows 风格（c:/xxx），node 才能解析
-  case "$QODERCLI_JS_MSYS" in
-    /[a-zA-Z]/*) QODERCLI_JS="${QODERCLI_JS_MSYS:1:1}:${QODERCLI_JS_MSYS:2}" ;;
-  esac
-fi
-if [ -z "$QODERCLI_JS" ] || ! [ -f "$QODERCLI_JS_MSYS" ]; then
-  echo "[pre-push] 未检测到 qodercli，跳过 AI 审查（装好后自动生效）"
+for cli in qoderclicn qodercli; do
+  CLI_BIN=$(command -v "$cli" 2>/dev/null || true)
+  [ -z "$CLI_BIN" ] && continue
+  CLI_JS_MSYS="${CLI_BIN%/*}/node_modules/@qodercn-ai/qoderclicn/bundle/qoderclicn.js"
+  [ -f "$CLI_JS_MSYS" ] || CLI_JS_MSYS="${CLI_BIN%/*}/node_modules/@qoder-ai/qodercli/bundle/qodercli.js"
+  if [ -f "$CLI_JS_MSYS" ]; then
+    QODERCLI_JS="$CLI_JS_MSYS"
+    break
+  fi
+done
+if [ -z "$QODERCLI_JS" ]; then
+  echo "[pre-push] 未检测到 qodercli/qoderclicn，跳过 AI 审查（装好后自动生效）"
   exit 0
 fi
+# MSYS 路径（/c/xxx）转 Windows 风格（c:/xxx），node 才能解析
+case "$QODERCLI_JS" in
+  /[a-zA-Z]/*) QODERCLI_JS="${QODERCLI_JS:1:1}:${QODERCLI_JS:2}" ;;
+esac
 
 echo "[pre-push] 正在用本地 Qoder 按 REVIEW.md 审查改动..."
 
