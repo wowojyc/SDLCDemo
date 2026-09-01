@@ -27,8 +27,20 @@ if [ -z "$diff_content" ]; then
   exit 0
 fi
 
-# 没装 qodercli 就静默跳过，不阻塞 push
-if ! command -v qodercli >/dev/null 2>&1; then
+# 定位 qodercli 的 JS 入口并直接用 node 执行。
+# 不用 sh 包装脚本：Windows npm 全局安装的包装脚本依赖 sed/dirname/uname，
+# 在裁剪过的 git-bash 环境里跑不起来（会让本地审查静默失效）。
+QODERCLI_BIN=$(command -v qodercli 2>/dev/null || true)
+QODERCLI_JS=""
+if [ -n "$QODERCLI_BIN" ]; then
+  QODERCLI_JS_MSYS="${QODERCLI_BIN%/*}/node_modules/@qoder-ai/qodercli/bundle/qodercli.js"
+  QODERCLI_JS="$QODERCLI_JS_MSYS"
+  # MSYS 路径（/c/xxx）转 Windows 风格（c:/xxx），node 才能解析
+  case "$QODERCLI_JS_MSYS" in
+    /[a-zA-Z]/*) QODERCLI_JS="${QODERCLI_JS_MSYS:1:1}:${QODERCLI_JS_MSYS:2}" ;;
+  esac
+fi
+if [ -z "$QODERCLI_JS" ] || ! [ -f "$QODERCLI_JS_MSYS" ]; then
   echo "[pre-push] 未检测到 qodercli，跳过 AI 审查（装好后自动生效）"
   exit 0
 fi
@@ -36,19 +48,17 @@ fi
 echo "[pre-push] 正在用本地 Qoder 按 REVIEW.md 审查改动..."
 
 {
-  cat .github/prompts/review.md
-  echo ""
-  echo "--- 以下是本次要推送的 diff ---"
-  echo "$diff_content"
+  printf '%s\n' "$(<.github/prompts/review.md)"
+  printf '\n--- 以下是本次要推送的 diff ---\n%s\n' "$diff_content"
 } > /tmp/sdlc-review-prompt.txt
 
-result=$(qodercli -p "$(cat /tmp/sdlc-review-prompt.txt)" \
+result=$(node "$QODERCLI_JS" -p "$(</tmp/sdlc-review-prompt.txt)" \
   --allowed-tools 'Read,Grep,Glob' --max-turns 6 2>/dev/null || true)
 
 echo "$result"
 
 # 只有 Important 级问题才阻断；Nit 仅提示，不拦人
-if echo "$result" | grep -qiE '\|\s*Important|##\s*Important|\*\*Important\*\*'; then
+if [[ "$result" == *"Important"* ]]; then
   echo ""
   echo "[pre-push] 发现 Important 级问题，已中止 push。"
   echo "          修复后重新 push；确需跳过：git push --no-verify"
