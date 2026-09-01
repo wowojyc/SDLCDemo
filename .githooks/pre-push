@@ -48,12 +48,13 @@ if [ -z "$QODERCLI_JS" ]; then
   echo "[pre-push] 未检测到 qodercli/qoderclicn，跳过 AI 审查（装好后自动生效）"
   exit 0
 fi
-# 审查标准缺失时优雅降级，不硬失败
+# 审查标准缺失时优雅降级，但明确提示（避免无审查静默通过）
 if ! [ -f .github/prompts/review.md ]; then
-  echo "[pre-push] 缺少 .github/prompts/review.md，跳过 AI 审查"
+  echo "[pre-push][warning] 缺少 .github/prompts/review.md，本次跳过 AI 审查（建议恢复该文件）"
   exit 0
 fi
-# MSYS 路径（/c/xxx）转 Windows 风格（c:/xxx），node 才能解析
+# MSYS 路径（/c/xxx）转 Windows 风格（c:/xxx），node 才能解析。
+# 前置假设：command -v 在 git-bash 中总返回绝对路径（实测如此）
 case "$QODERCLI_JS" in
   /[a-zA-Z]/*) QODERCLI_JS="${QODERCLI_JS:1:1}:${QODERCLI_JS:2}" ;;
 esac
@@ -65,7 +66,9 @@ PROMPT_FILE="$(git rev-parse --git-dir)/sdlc-review-prompt.txt"
 
 {
   printf '%s\n' "$(<.github/prompts/review.md)"
-  printf '\n--- 以下是本次要推送的 diff ---\n%s\n' "$diff_content"
+  printf '\n--- 以下是本次要推送的 diff ---\n'
+  # diff 单独作为 %s 参数输出（不拼进格式串），diff 里的 % 字符原样保留
+  printf '%s\n' "$diff_content"
 } > "$PROMPT_FILE"
 
 # prompt 走 stdin 而不是 -p 参数：Windows CreateProcessW 命令行上限 32767 字符，
