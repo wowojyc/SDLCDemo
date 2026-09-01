@@ -68,8 +68,11 @@ PROMPT_FILE=".git/sdlc-review-prompt.txt"
   printf '\n--- 以下是本次要推送的 diff ---\n%s\n' "$diff_content"
 } > "$PROMPT_FILE"
 
-result=$(node "$QODERCLI_JS" -p "$(<"$PROMPT_FILE")" \
-  --allowed-tools 'Read,Grep,Glob' --max-turns 6 2>/dev/null || true)
+# prompt 走 stdin 而不是 -p 参数：Windows CreateProcessW 命令行上限 32767 字符，
+# 大 diff 塞进参数会超限导致 node 启动失败、审查静默失效
+result=$(node "$QODERCLI_JS" -p \
+  --allowed-tools 'Read,Grep,Glob' --max-turns 6 \
+  < "$PROMPT_FILE" 2>/dev/null || true)
 
 echo "$result"
 
