@@ -28,7 +28,7 @@ def main() -> int:
         return 0
     marker = Path(cwd) / ".git" / "sdlc-changed"
     marker.parent.mkdir(parents=True, exist_ok=True)
-    marker.touch()
+    marker.touch(mode=0o644)
 
     if not file_path.endswith(".py") or shutil.which("ruff") is None:
         return 0

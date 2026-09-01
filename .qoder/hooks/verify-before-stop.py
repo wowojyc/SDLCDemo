@@ -39,8 +39,7 @@ def main() -> int:
         return 0
 
     if not os.path.exists(test_marker):
-        print("本次会话改过文件但还没有运行过测试。", file=sys.stderr)
-        print("请先执行 make test 并确保全绿，再报告任务完成；", file=sys.stderr)
+        print("检测到代码修改但未运行测试，请先执行 make test 并确保测试通过后再停止会话。", file=sys.stderr)
         print("并把命令的原始输出粘贴到你的总结里（不要只说'测试已通过'）。", file=sys.stderr)
         return 2
 
