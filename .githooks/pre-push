@@ -61,7 +61,7 @@ esac
 echo "[pre-push] 正在用本地 Qoder 按 REVIEW.md 审查改动..."
 
 # 临时文件放 .git 下（仓库隔离、覆盖写、无需清理；/tmp 全局共享且有符号链接风险）
-PROMPT_FILE=".git/sdlc-review-prompt.txt"
+PROMPT_FILE="$(git rev-parse --git-dir)/sdlc-review-prompt.txt"
 
 {
   printf '%s\n' "$(<.github/prompts/review.md)"
@@ -84,9 +84,9 @@ import re, sys
 text = sys.stdin.read()
 m = re.search(r"##\s*Important[^\n]*\n(.*?)(?=\n##\s|\Z)", text, re.S)
 body = (m.group(1) or "").strip() if m else ""
-# 发现项按 REVIEW.md 模板是 markdown 列表项（- [Bugs] 等）；
-# 段落无列表项（空/“无。”/“没有发现”）→ 无 Important 问题
-if re.search(r"(^|\n)\s*-\s+", body):
+# 发现项按 REVIEW.md 模板带方括号标签（- [Bugs] / - **[Security]** 等）；
+# “无。”或“- 无”等占位不算发现项（纯 ASCII 判断，无编码依赖）
+if re.search(r"^\s*-\s+(\*\*)?\[[A-Za-z]+\]", body, re.M):
     sys.exit(1)
 sys.exit(0)
 ' >/dev/null 2>&1; then
