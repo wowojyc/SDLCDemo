@@ -75,7 +75,8 @@ PR 写 `Closes #xx`，合并即关闭 Issue —— 一条需求从登记到合�
       ├─ ci.yml                  基础 CI
       ├─ pr-review.yml           05：AI 自动审 PR
       ├─ agent-evals.yml         04：持续评估（配置变更 + 定时）
-      └─ maintenance-scan.yml    06：定期检测 + 分档响应
+      ├─ maintenance-scan.yml    06：定期检测 + 分档响应
+      └─ release.yml             发布：push v* tag → 门禁 → Release
 ```
 
 ---
@@ -147,6 +148,14 @@ git push origin feat/待办标签   # 推送 feature 分支（不是 main）
 
 **验收**：发现项按严重度分级、带轮次标签、Nit ≤ 5 条；你只判断意图与风险。
 
+### Gate 4.5 · 发布（按需发版）
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+push `v*` tag 触发 `release.yml`：测试/lint 门禁 → 校验 `vX.Y.Z` 格式 →
+`gh release create --generate-notes`（Release notes 从 PR 自动汇总，不维护 CHANGELOG 文件）。
+**验收**：Release 页出现新版本，notes 汇总了对应 PR 列表。
+
 ### （可选）Gate 5 · 维护闭环
 ```bash
 # 手动测分档：给一个明显异常的值
@@ -199,6 +208,7 @@ Actions 里 `maintenance-scan` 每天 03:00 跑；也可手动触发并传 value
 | `pr-review.yml` | PR 开启/更新 | 按 REVIEW.md 审，贴评论 | 05 部署 |
 | `agent-evals.yml` | 配置变更 + 每天 02:00（北京时间，UTC 18:00） | 跑 eval 套件，掉分就失败 | 04 测试 |
 | `maintenance-scan.yml` | 每天 03:00 + 手动 | 确定性检测 → 分档响应 | 06 维护 |
+| `release.yml` | push `v*` tag | 门禁 → 生成 Release | 发布 |
 
 ---
 
