@@ -32,7 +32,7 @@
 
 - **决定：新 job `collect`（permissions: contents: write），detect job 改为 `needs: collect`**（detect 保持只读权限）
 - **写回目标：独立数据分支 `metrics-data`，不推 main**——实证修正（原设计直推 main 被分支保护拒绝，见下方「设计修正记录」）
-- collect job 步骤：checkout → setup-python → 切到 `metrics-data` 最新（首次不存在则从 main 起步，种子文件冷启动）→ 从 main 取最新采集脚本（代码随 main 演进；`git reset` 取消 stage，commit 只含 metrics）→ `python scripts/collect_ci_failure_rate.py` → 有变化则 commit（message：`metrics: 追加 CI 失败率采样 (#18)`，#18 作溯源）→ `git push origin HEAD:metrics-data`（`git config user` 设为 `github-actions[bot]`）
+- collect job 步骤：checkout → setup-python → 切到 `metrics-data` 最新（首次不存在则从 main 起步，种子文件冷启动）→ 从 main 取最新采集脚本（代码随 main 演进；`git reset` 取消 stage，commit 只含 metrics）→ `python scripts/collect_ci_failure_rate.py` → 有变化则 commit（message：`metrics: 追加 CI 失败率采样 (#18)`，#18 作溯源）→ `git push origin HEAD:refs/heads/metrics-data`（完整 refname——首次创建远端不存在的分支时 git 无法推断 heads/tags，`HEAD:metrics-data` 报 not a full refname；`git config user` 设为 `github-actions[bot]`）
 - 无递归：ci.yml 只监听 `push: branches: [main]`，推 `metrics-data` 不触发任何 CI（无需 `[skip ci]`）；commit 无需引用 Issue 防误伤（check-commit-refs 只在 main push / PR 事件运行），引用 #18 仅作溯源
 - 容错：collect job 整体 `continue-on-error: true`（采集失败可见但不断链）；detect 用 `if: always()` 保证即便 collect 失败也继续检测（读旧值）
 - detect job 权限不变（只读）；新增「载入 metrics 历史」步骤（fetch + checkout 数据分支的 metrics 文件到工作区，只读操作）；VALUE 来源不变（`values[-1]` 现在就是真实值）；diagnose/act 不变

@@ -70,7 +70,13 @@ spec 决策「collect job 直接 push main」与 main 分支保护互斥；本�
 - detect job：新增「载入 metrics 历史」步骤（fetch + checkout 数据分支文件，只读）
 - spec F2/F4 + bands.yaml 数据流注释 + metrics 种子说明同步更新
 
-### 修正后需重跑验证（Step 8 二次执行）
-1. PR #20 4/4 全绿 → merge
-2. 手动触发 maintenance-scan → 验证：`metrics-data` 分支出现真实追加 commit；未触发新 ci.yml run；detect 输出真实当前值（冷启动期可能 insufficient_data，属预期）
+### 修正后需重跑验证（Step 8 二次执行，2026-09-02）
+
+**结果（run 33606858325）**：collect 仍失败，但原因变了——采集/切分支/commit 全部成功，卡在 `git push origin HEAD:metrics-data`：`error: destination is not a full refname`（首次创建远端不存在的分支时，git 无法推断 heads/tags；`HEAD:main` 能推是因为 main 已存在）
+
+**再修正（PR #21）**：push 改完整 refname `HEAD:refs/heads/metrics-data`
+
+**三次实证步骤**：
+1. PR #21 4/4 全绿 → merge
+2. 手动触发 maintenance-scan → 验证：`metrics-data` 分支出现真实追加 commit（#18 溯源）；未触发新 ci.yml run；detect 输出真实当前值（冷启动期可能 insufficient_data，属预期）
 3. 通过后续 Step 9（归档）→ Step 10（发版 v0.1.1）
