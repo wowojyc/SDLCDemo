@@ -8,7 +8,8 @@
 # 注意：σ 阈值（Western Electric 1/2/3σ + 最近 6 点单调漂移）实现在 scripts/detect_drift.py（硬编码、有单测），
 #       bands.yaml 声明层级与动作（log/diagnose/act）；二者由 .github/workflows/maintenance-scan.yml 的 job 结构绑定。
 # 数据流：maintenance-scan collect job 每日采集（scripts/collect_ci_failure_rate.py）→ 追加 metrics/ci_test_failure_rate.json
-#       → detect job 读 values[-1] → detect_drift.py 分档。
+#       （真身维护在 metrics-data 分支：main 受分支保护须走 PR，采集写回走独立数据分支；ci.yml 只监听 main，天然不递归）
+#       → detect job 从 metrics-data 载入历史，读 values[-1] → detect_drift.py 分档。
 
 metric: ci_test_failure_rate
 baseline: rolling_30d          # 基线窗口：最近 30 次 main push 采样的滚动窗口

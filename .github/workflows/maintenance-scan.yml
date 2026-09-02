@@ -23,6 +23,9 @@ on:
 jobs:
   # 采集：拉真实 CI 失败率写回 metrics（维护闭环的“传感器”）。
   # 失败可见但不断链（continue-on-error），detect 用 if: always() 读旧值继续。
+  # 写回目标：独立数据分支 metrics-data（main 受分支保护——一切变更须走 PR，
+  # 含 workflow 直推，GH006 实证被拒；数据分支不受保护，且 ci.yml 只监听 push main，
+  # 推数据分支不会递归触发 CI，无需 [skip ci]）。
   collect:
     runs-on: ubuntu-latest
     permissions:
@@ -35,10 +38,20 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 采集 CI 失败率并写回 metrics
+      - name: 采集 CI 失败率并写回 metrics-data 分支
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # 切到数据分支最新（首次不存在则从 main 起步，用种子文件冷启动）
+          git fetch origin metrics-data:refs/remotes/origin/metrics-data 2>/dev/null || true
+          if git rev-parse --verify -q refs/remotes/origin/metrics-data; then
+            git checkout --detach refs/remotes/origin/metrics-data
+          else
+            git checkout --detach main
+          fi
+          # 采集脚本是代码（随 main 演进），从 main 取最新；metrics 文件保持数据分支版本
+          git checkout main -- scripts/collect_ci_failure_rate.py
+          git reset -q -- scripts/collect_ci_failure_rate.py
           python scripts/collect_ci_failure_rate.py
           if git diff --quiet metrics/ci_test_failure_rate.json; then
             echo "metrics 无变化（窗口内无新 run 或值未变），跳过写回"
@@ -47,9 +60,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add metrics/ci_test_failure_rate.json
-          # [skip ci] 防递归触发 ci.yml；#18 防 check-commit-refs 误伤
-          git commit -m "metrics: 追加 CI 失败率采样 (#18) [skip ci]"
-          git push origin HEAD:main
+          # #18 作溯源；push 非 main 分支不触发 ci.yml（无需 [skip ci]）
+          git commit -m "metrics: 追加 CI 失败率采样 (#18)"
+          git push origin HEAD:metrics-data
+          echo "已写回 metrics-data：$(git log -1 --format='%h %s')"
 
   detect:
     needs: collect
@@ -64,6 +78,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: 载入 metrics 历史（真身存于 metrics-data 分支）
+        run: |
+          # main 上的 metrics 文件只是冷启动种子；日常历史由 collect job 维护在
+          # metrics-data 分支（fetch + checkout 均为只读操作，不违反 detect 只读权限）
+          git fetch origin metrics-data:refs/remotes/origin/metrics-data 2>/dev/null || true
+          if git rev-parse --verify -q refs/remotes/origin/metrics-data; then
+            git checkout refs/remotes/origin/metrics-data -- metrics/ci_test_failure_rate.json
+            echo "已从 metrics-data 载入历史"
+          else
+            echo "metrics-data 尚不存在，使用 main 种子文件（冷启动）"
+          fi
 
       - name: 确定性检测（无 AI 参与）
         id: detect
