@@ -78,3 +78,12 @@ def test_code_without_plan_is_broken(tmp_path):
     result = audit(tmp_path)
     assert result["ok"] is False
     assert any("plan" in b for b in result["broken_links"])
+
+def test_archived_intent_does_not_count(tmp_path):
+    # 归档（intent/archive/）里的 MRD 不算活跃：顶层无 *.md 则 intent 环节缺失，spec 变成断链
+    _touch(tmp_path, "intent/archive/tags-webpage.md")
+    _touch(tmp_path, "spec.md")
+    result = audit(tmp_path)
+    assert result["stage"] == "spec"
+    assert result["ok"] is False
+    assert any("intent" in b for b in result["broken_links"])

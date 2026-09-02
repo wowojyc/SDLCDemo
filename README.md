@@ -21,13 +21,15 @@
 | 载体 | 语义 | 谁写 |
 |---|---|---|
 | GitHub Issue | **原始需求**（登记处，人和自动化都在这里开） | 人 / maintenance-scan |
-| `intent/intent.md` | **MRD** 市场需求文档：为什么做、给谁、怎么算成 | 发起者 + AI 追问收口 |
+| `intent/<slug>.md` | **MRD** 市场需求文档：为什么做、给谁、怎么算成 | 发起者 + AI 追问收口 |
 | `spec.md` | **PRD** 产品需求文档：做成什么样、约束、验收方式 | AI（人审核） |
 | `plan.md` | 技术方案：文件清单、顺序、风险、证明方式 | AI（人审核） |
 
 **状态怎么追**：不靠手改状态字段——产物链本身就是状态机。`scripts/audit_artifacts.py`
 按序检查 intent → spec → plan → 代码 → 测试，最后一个存在的环节即当前阶段；
 下游存在而上游缺失视为**断链**（违反流程顺序）。每次 push / PR 由 CI 输出进度表。
+`intent/` 下每个需求一份 MRD（`intent/<slug>.md`），需求完成（PR 合并）后移入
+`intent/archive/` 归档——audit 只统计顶层活跃文件，历史记录不干扰当前链路。
 
 **代码必须关联 Issue**：commit message 必须含 `#数字`（GitHub 自动把 commit 挂到 Issue
 时间线）。本地 `.githooks/commit-msg` 强制；被 `--no-verify` 绕过时，云端 `ci.yml` 兜底再查。
@@ -50,7 +52,7 @@ PR 写 `Closes #xx`，合并即关闭 Issue —— 一条需求从登记到合�
 ```
 .
 ├─ AGENTS.md                     Qoder 项目规则（四段 + 验证块）
-├─ intent/intent.md              01 规划：需求 MRD（六字段 + 来源 Issue）
+├─ intent/<slug>.md               01 规划：每需求一份 MRD（六字段 + 来源 Issue，完成即归档）
 ├─ spec.md / plan.md             02/03 设计：spec（PRD）/ plan（技术方案），由 AI 生成
 ├─ REVIEW.md                     05 部署：CR 审查标准（人写的尺子）
 ├─ bands.yaml                    06 维护：越界响应层级

@@ -19,6 +19,7 @@
 - `src/api.py`：HTTP 层（薄，只做参数校验与转发）
 - `tests/`：pytest，与 `src/` 目录结构一一对应
 - `src/gen/`：生成目录，**禁止手改**
+- `intent/`：每需求一份 MRD（`<slug>.md`，头部标注来源 Issue）；完成即移入 `intent/archive/`
 
 ## Things AI gets wrong
 - **不要为了让测试通过而修改 `tests/` 下的文件**——测试失败要改 `src/`

@@ -35,7 +35,7 @@ from pathlib import Path
 
 # 产物链定义：顺序即流程，后一环存在即隐含前一环已通过
 ARTIFACTS: list[dict] = [
-    {"name": "intent", "path": "intent/intent.md", "kind": "file", "label": "01 规划 · MRD"},
+    {"name": "intent", "path": "intent", "kind": "intent", "label": "01 规划 · MRD"},
     {"name": "spec", "path": "spec.md", "kind": "file", "label": "02 设计 · PRD"},
     {"name": "plan", "path": "plan.md", "kind": "file", "label": "03 计划 · 技术方案"},
     {"name": "src", "path": "src", "kind": "src", "label": "04 构建 · 代码"},
@@ -53,8 +53,10 @@ STAGE_LABELS: dict[str, str] = {
 
 
 def artifact_exists(root: Path, item: dict) -> bool:
-    """按产物类型判定是否存在：文件直查；src 需有 .py；tests 需有 test_*.py。"""
+    """按产物类型判定是否存在：文件直查；intent 扫顶层 *.md（archive/ 归档不计）；src 需有 .py；tests 需有 test_*.py。"""
     p = root / item["path"]
+    if item["kind"] == "intent":
+        return p.is_dir() and any(p.glob("*.md"))
     if item["kind"] == "src":
         return p.is_dir() and any(p.glob("*.py"))
     if item["kind"] == "tests":
