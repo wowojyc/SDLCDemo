@@ -12,6 +12,7 @@
 - 计数与金额用 `int`，不用 `float`
 - 每个对外函数都要有 docstring 和对应单元测试
 - 错误用异常抛出，不返回 `None` 伪装成功
+- commit message 必须引用 Issue（`#数字`）：本地 commit-msg 与云端 CI 双重强制
 
 ## Architecture
 - `src/todos.py`：领域逻辑（纯函数，不碰 I/O）

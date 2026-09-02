@@ -16,6 +16,23 @@
 | **协作平台** | **GitHub** | PR + 分支保护 + code owner（CR 闸门）· Actions（evals / CI / 定时扫描）· Issues（分诊队列）· 全程留痕 = 审计链 |
 | **连接层** | **git** | 本地产出的文件提交后，触发平台层自动化 |
 
+### 需求链路：Issue → MRD → PRD → 代码
+
+| 载体 | 语义 | 谁写 |
+|---|---|---|
+| GitHub Issue | **原始需求**（登记处，人和自动化都在这里开） | 人 / maintenance-scan |
+| `intent/intent.md` | **MRD** 市场需求文档：为什么做、给谁、怎么算成 | 发起者 + AI 追问收口 |
+| `spec.md` | **PRD** 产品需求文档：做成什么样、约束、验收方式 | AI（人审核） |
+| `plan.md` | 技术方案：文件清单、顺序、风险、证明方式 | AI（人审核） |
+
+**状态怎么追**：不靠手改状态字段——产物链本身就是状态机。`scripts/audit_artifacts.py`
+按序检查 intent → spec → plan → 代码 → 测试，最后一个存在的环节即当前阶段；
+下游存在而上游缺失视为**断链**（违反流程顺序）。每次 push / PR 由 CI 输出进度表。
+
+**代码必须关联 Issue**：commit message 必须含 `#数字`（GitHub 自动把 commit 挂到 Issue
+时间线）。本地 `.githooks/commit-msg` 强制；被 `--no-verify` 绕过时，云端 `ci.yml` 兜底再查。
+PR 写 `Closes #xx`，合并即关闭 Issue —— 一条需求从登记到合并全程留痕。
+
 ### Qoder Hooks 能做什么（这是"硬防护"层）
 
 | 事件 | 本仓库的用法 | 对应原课 |
@@ -33,8 +50,8 @@
 ```
 .
 ├─ AGENTS.md                     Qoder 项目规则（四段 + 验证块）
-├─ intent/intent.md              01 规划：需求（六字段）
-├─ spec.md / plan.md             02/03：由 AI 生成（跑流程时产出）
+├─ intent/intent.md              01 规划：需求 MRD（六字段 + 来源 Issue）
+├─ spec.md / plan.md             02/03 设计：spec（PRD）/ plan（技术方案），由 AI 生成
 ├─ REVIEW.md                     05 部署：CR 审查标准（人写的尺子）
 ├─ bands.yaml                    06 维护：越界响应层级
 ├─ .qoder/
@@ -42,9 +59,10 @@
 │  └─ hooks/*.py                 4 个钩子脚本（Python 标准库，零依赖）
 ├─ qoder-settings.example.json   hooks + permissions 配置示例
 ├─ src/ tests/ Makefile          最小可跑项目（一条命令跑测试）
-├─ .githooks/pre-commit          git 层兜底（补 hooks 之外的来源）
+├─ .githooks/{pre-commit,commit-msg,pre-push}   git 层兜底（测试 / Issue 关联 / 本地审查）
 ├─ evals/                        04 测试：评估套件
 ├─ scripts/detect_drift.py       06 维护：确定性检测（不用 AI 判断）
+├─ scripts/audit_artifacts.py    链路审计：产物链状态推导（确定性）
 ├─ metrics/                      指标历史（检测脚本的输入）
 └─ .github/
    ├─ prompts/review.md          PR 审查提示词（引用 REVIEW.md）
@@ -80,7 +98,8 @@ git config core.hooksPath .githooks   # 启用提交前兜底
 **验收**：新开会话，让 AI 改 `tests/` 下任一文件 → 被 hook 拦下并提示原因。
 
 ### Gate 1 · 需求收口
-手写（或改写）`intent/intent.md`，六个字段。提交进 git。
+先在 GitHub 开 Issue 登记原始需求，再手写（或改写）`intent/intent.md`
+（六字段，来源字段填 Issue 编号）。提交进 git。
 **验收**：找一个没参与的人读，他能说清"要什么、为什么、怎么算成"。
 
 ### Gate 2 · 设计 + 计划
@@ -153,6 +172,8 @@ Actions 里 `maintenance-scan` 每天 03:00 跑；也可手动触发并传 value
 4. **Hooks 管底线，规则管常见**：必须 100% 守住的（不许改测试）用 hook；其余用规则文件。
 5. **本地 hooks 用 qodercli，远端 CI 不再依赖它**：pre-push/pre-commit 用本地已登录的 Qoder 审查；
    远端 CI 的 AI 环节统一走 `LLM_API_KEY`（OpenAI 兼容协议），换供应商只改 Secret。
+6. **需求可回溯**：commit 必须引用 Issue（本地 commit-msg + 云端 CI 双保险）；
+   链路状态由 `audit_artifacts.py` 确定性推导，不靠手改状态字段。
 
 ---
 

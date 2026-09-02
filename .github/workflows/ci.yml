@@ -9,6 +9,51 @@ on:
   pull_request:
 
 jobs:
+  # 需求链路兜底：本地 commit-msg 被 --no-verify 跳过时，云端仍强制
+  # 每个 commit 必须引用 Issue（#数字）—— 保证代码可回溯到原始需求
+  check-commit-refs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 需要完整历史来比较 before / base.sha
+
+      - name: 检查 commit 是否引用 Issue
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          # 基线不存在（如首次推送）时跳过并提示，不误伤历史 commit
+          if ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            echo "::warning::基线 commit 不存在（首次推送？），跳过本次检查"
+            exit 0
+          fi
+          bad=$(git log --no-merges --format='%h %s' "${BASE}..HEAD" | grep -Ev '#[0-9]+' || true)
+          if [ -n "$bad" ]; then
+            echo "以下 commit 未关联 Issue（message 缺 #数字）："
+            echo "$bad"
+            exit 1
+          fi
+          echo "✅ ${BASE}..HEAD 全部非 merge commit 均引用 Issue"
+
+  # 需求链路状态投影：每次 push / PR 推导产物链进度，输出到 Step Summary
+  # 确定性检查（scripts/audit_artifacts.py），不用 AI 判断；断链（下游存在而上游缺失）即失败
+  flow-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 推导链路状态
+        run: |
+          python scripts/audit_artifacts.py --format markdown >> "$GITHUB_STEP_SUMMARY"
+          python scripts/audit_artifacts.py  # 断链时退出码非 0，workflow 失败
+
   test:
     runs-on: ubuntu-latest
     steps:
