@@ -3,6 +3,7 @@
   "metric": "ci_test_failure_rate",
   "unit": "ratio",
   "values": [
-    0.2
+    0.2,
+    0.1333
   ]
 }
