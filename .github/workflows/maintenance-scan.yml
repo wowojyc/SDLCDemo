@@ -21,7 +21,39 @@ on:
         required: false
 
 jobs:
+  # 采集：拉真实 CI 失败率写回 metrics（维护闭环的“传感器”）。
+  # 失败可见但不断链（continue-on-error），detect 用 if: always() 读旧值继续。
+  collect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 采集 CI 失败率并写回 metrics
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/collect_ci_failure_rate.py
+          if git diff --quiet metrics/ci_test_failure_rate.json; then
+            echo "metrics 无变化（窗口内无新 run 或值未变），跳过写回"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add metrics/ci_test_failure_rate.json
+          # [skip ci] 防递归触发 ci.yml；#18 防 check-commit-refs 误伤
+          git commit -m "metrics: 追加 CI 失败率采样 (#18) [skip ci]"
+          git push origin HEAD:main
+
   detect:
+    needs: collect
+    if: always()  # collect 失败（run 黄）也继续检测：读旧值分档，不静默断链
     runs-on: ubuntu-latest
     outputs:
       tier: ${{ steps.detect.outputs.tier }}

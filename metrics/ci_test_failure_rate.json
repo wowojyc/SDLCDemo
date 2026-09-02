@@ -1,10 +1,6 @@
 {
-  "_说明": "ci_test_failure_rate 的历史值（示例数据）。实际使用时由 CI 定期追加写入，脚本只做读取与计算。",
+  "_说明": "ci_test_failure_rate 的历史值。由 maintenance-scan 的 collect job 每日采集追加（scripts/collect_ci_failure_rate.py），勿手改。",
   "metric": "ci_test_failure_rate",
   "unit": "ratio",
-  "values": [
-    0.02, 0.03, 0.02, 0.04, 0.03, 0.02, 0.03, 0.05,
-    0.02, 0.03, 0.02, 0.04, 0.03, 0.02, 0.02, 0.03,
-    0.04, 0.02, 0.03, 0.02, 0.03, 0.02, 0.04, 0.03
-  ]
+  "values": []
 }
