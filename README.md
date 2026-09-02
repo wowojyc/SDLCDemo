@@ -4,7 +4,7 @@
 
 > 核心思路：**文件即唯一事实来源，AI 只经有闸门的路由行动，人只做分诊与拍板。**
 
-**当前需求**：[intent/intent.md](intent/intent.md) —— 待办清单支持标签（尚未实现，留给 AI 做）。
+**当前需求**：[intent/flow-tracking.md](intent/flow-tracking.md) —— 需求链路自动追踪（Issue #4）。
 
 ---
 
@@ -15,6 +15,27 @@
 | **本地 agent** | **Qoder** | `AGENTS.md`（每次会话自动读）· `.qoder/rules/*.md`（按 glob / 模型决策按需加载 ≈ Skills）· **Hooks（12 事件）** · 计划模式 · 并行会话 · 子代理 |
 | **协作平台** | **GitHub** | PR + 分支保护 + code owner（CR 闸门）· Actions（evals / CI / 定时扫描）· Issues（分诊队列）· 全程留痕 = 审计链 |
 | **连接层** | **git** | 本地产出的文件提交后，触发平台层自动化 |
+
+### 需求链路：Issue → MRD → PRD → 代码
+
+| 载体 | 语义 | 谁写 |
+|---|---|---|
+| GitHub Issue | **原始需求**（登记处，人和自动化都在这里开） | 人 / maintenance-scan |
+| `intent/<slug>.md` | **MRD** 市场需求文档：为什么做、给谁、怎么算成 | 发起者 + AI 追问收口 |
+| `spec/<slug>.md` | **PRD** 产品需求文档：做成什么样、约束、验收方式 | AI（人审核） |
+| `plan/<slug>.md` | 技术方案：文件清单、顺序、风险、证明方式 | AI（人审核） |
+
+**状态怎么追**：不靠手改状态字段——产物链本身就是状态机。`scripts/audit_artifacts.py`
+按需求（slug）检查文档链：**intent（必有）→ spec（按需）→ plan（按需）**，最靠后的
+环节即该需求当前阶段；顶层 spec/plan 找不到对应活跃 intent 视为**断链**（孤儿文档 /
+归档遗漏）。src/、tests/ 是仓库共享现状，只展示、不推高阶段。每次 push / PR 由 CI
+输出进度表。三个目录（`intent/` `spec/` `plan/`）下每个需求一份文档（`<slug>.md`），
+需求完成（PR 合并）后**三份一起移入各自 `archive/`** 归档——audit 只统计顶层活跃
+文件，历史记录不干扰当前链路；不需要设计/开发的需求可以没有 spec/plan。
+
+**代码必须关联 Issue**：commit message 必须含 `#数字`（GitHub 自动把 commit 挂到 Issue
+时间线）。本地 `.githooks/commit-msg` 强制；被 `--no-verify` 绕过时，云端 `ci.yml` 兜底再查。
+PR 写 `Closes #xx`，合并即关闭 Issue —— 一条需求从登记到合并全程留痕。
 
 ### Qoder Hooks 能做什么（这是"硬防护"层）
 
@@ -33,8 +54,9 @@
 ```
 .
 ├─ AGENTS.md                     Qoder 项目规则（四段 + 验证块）
-├─ intent/intent.md              01 规划：需求（六字段）
-├─ spec.md / plan.md             02/03：由 AI 生成（跑流程时产出）
+├─ intent/<slug>.md               01 规划：每需求一份 MRD（六字段 + 来源 Issue，完成即归档）
+├─ spec/<slug>.md                 02 设计：每需求一份 PRD（按需，完成即归档）
+├─ plan/<slug>.md                 03 计划：每需求一份技术方案（按需，完成即归档）
 ├─ REVIEW.md                     05 部署：CR 审查标准（人写的尺子）
 ├─ bands.yaml                    06 维护：越界响应层级
 ├─ .qoder/
@@ -42,9 +64,10 @@
 │  └─ hooks/*.py                 4 个钩子脚本（Python 标准库，零依赖）
 ├─ qoder-settings.example.json   hooks + permissions 配置示例
 ├─ src/ tests/ Makefile          最小可跑项目（一条命令跑测试）
-├─ .githooks/pre-commit          git 层兜底（补 hooks 之外的来源）
+├─ .githooks/{pre-commit,commit-msg,pre-push}   git 层兜底（测试 / Issue 关联 / 本地审查）
 ├─ evals/                        04 测试：评估套件
 ├─ scripts/detect_drift.py       06 维护：确定性检测（不用 AI 判断）
+├─ scripts/audit_artifacts.py    链路审计：产物链状态推导（确定性）
 ├─ metrics/                      指标历史（检测脚本的输入）
 └─ .github/
    ├─ prompts/review.md          PR 审查提示词（引用 REVIEW.md）
@@ -80,18 +103,20 @@ git config core.hooksPath .githooks   # 启用提交前兜底
 **验收**：新开会话，让 AI 改 `tests/` 下任一文件 → 被 hook 拦下并提示原因。
 
 ### Gate 1 · 需求收口
-手写（或改写）`intent/intent.md`，六个字段。提交进 git。
+先在 GitHub 开 Issue 登记原始需求，再手写（或改写）`intent/<slug>.md`
+（六字段，来源字段填 Issue 编号；slug 用需求的英文短名，如 `flow-tracking`）。提交进 git。
 **验收**：找一个没参与的人读，他能说清"要什么、为什么、怎么算成"。
 
 ### Gate 2 · 设计 + 计划
 ```
-读取 intent/intent.md，产出 spec.md：功能、数据流、系统变更、所需约束，
+读取 intent/<slug>.md，产出 spec/<slug>.md：功能、数据流、系统变更、所需约束，
 以及明确标出的关注点（尤其你无法满足或相互矛盾的地方）。
-不要修改任何代码，只写 spec.md。
+不需要设计的需求可以跳过 spec。不要修改任何代码，只写 spec/<slug>.md。
 ```
 ```
-读取 intent/intent.md 和 spec.md，产出 plan.md：要改动的具体文件、工作顺序、
+读取 intent/<slug>.md 和 spec/<slug>.md，产出 plan/<slug>.md：要改动的具体文件、工作顺序、
 风险、以及用什么测试证明做对了。先不要修改任何代码，只给方案。
+不需要开发的需求可以跳过 plan。
 ```
 **验收**：spec 有关注点；plan 有文件清单 + 证明方式。你接受后才进下一关。
 
@@ -153,6 +178,9 @@ Actions 里 `maintenance-scan` 每天 03:00 跑；也可手动触发并传 value
 4. **Hooks 管底线，规则管常见**：必须 100% 守住的（不许改测试）用 hook；其余用规则文件。
 5. **本地 hooks 用 qodercli，远端 CI 不再依赖它**：pre-push/pre-commit 用本地已登录的 Qoder 审查；
    远端 CI 的 AI 环节统一走 `LLM_API_KEY`（OpenAI 兼容协议），换供应商只改 Secret。
+6. **需求可回溯**：commit 必须引用 Issue（本地 commit-msg + 云端 CI 双保险）；
+   链路状态由 `audit_artifacts.py` 确定性推导，不靠手改状态字段；
+   文档链按需求弹性（intent 必有，spec/plan 按需），断链只指孤儿文档。
 
 ---
 

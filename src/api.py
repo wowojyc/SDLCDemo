@@ -91,7 +91,7 @@ class Handler(BaseHTTPRequestHandler):
             return {}
 
     def _create_todo(self) -> None:
-        """新增待办：边界先校验类型，业务规则交给领域层。"""
+        """新增待办：边界先校验类型与取值，业务规则交给领域层。"""
         payload = self._read_json()
         title = payload.get("title", "")
         if not isinstance(title, str) or not title.strip():
@@ -101,10 +101,23 @@ class Handler(BaseHTTPRequestHandler):
         if not isinstance(raw_tags, list):
             self._error(400, "invalid_tags", "tags 必须是数组")
             return
+        raw_priority = payload.get("priority")
+        if raw_priority is not None:
+            # bool 是 int 子类，先排除；只接受 0-99 的整数
+            if (
+                isinstance(raw_priority, bool)
+                or not isinstance(raw_priority, int)
+                or not 0 <= raw_priority <= 99
+            ):
+                self._error(400, "invalid_priority", "priority 必须是 0-99 的整数")
+                return
+            priority = raw_priority
+        else:
+            priority = 0
         try:
-            todo = add(_TODOS, title, payload.get("priority", 0), tags=raw_tags)
+            todo = add(_TODOS, title, priority, tags=raw_tags)
         except ValueError as exc:
-            # 到这里只剩标签超限一种情况（标题已在边界校验）
+            # 到这里只剩标签超限一种情况（标题与 priority 已在边界校验）
             self._error(400, "invalid_tags", str(exc))
         else:
             self._respond(201, _todo_dict(todo))

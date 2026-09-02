@@ -12,12 +12,14 @@
 - 计数与金额用 `int`，不用 `float`
 - 每个对外函数都要有 docstring 和对应单元测试
 - 错误用异常抛出，不返回 `None` 伪装成功
+- commit message 必须引用 Issue（`#数字`）：本地 commit-msg 与云端 CI 双重强制
 
 ## Architecture
 - `src/todos.py`：领域逻辑（纯函数，不碰 I/O）
 - `src/api.py`：HTTP 层（薄，只做参数校验与转发）
 - `tests/`：pytest，与 `src/` 目录结构一一对应
 - `src/gen/`：生成目录，**禁止手改**
+- `intent/` `spec/` `plan/`：每需求一份文档（`<slug>.md`，头部标注来源 Issue）；spec/plan 按需；完成即三份一起移入各自 `archive/`
 
 ## Things AI gets wrong
 - **不要为了让测试通过而修改 `tests/` 下的文件**——测试失败要改 `src/`
