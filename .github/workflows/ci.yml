@@ -19,6 +19,9 @@ jobs:
           fetch-depth: 0  # 需要完整历史来比较 before / base.sha
 
       - name: 检查 commit 是否引用 Issue
+        # dependabot 的 PR 由 GitHub bot 自动生成，commit 无法引用 Issue，豁免；
+        # 普通 PR / push 场景不受影响（push 事件该字段为空，条件恒真）。
+        if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             # PR 场景：用运行时 base 分支最新 tip。
