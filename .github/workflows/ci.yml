@@ -21,14 +21,18 @@ jobs:
       - name: 检查 commit 是否引用 Issue
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            BASE="${{ github.event.pull_request.base.sha }}"
+            # PR 场景：用运行时 base 分支最新 tip。
+            # 不能用创建时的 base.sha——PR 存活期间 base 分支可能合入了新 PR（如 merge commit
+            # 带进无 Issue 引用的 commit），base.sha 会把它们误算进检查范围导致误报。
+            git fetch origin "${{ github.event.pull_request.base.ref }}" --quiet
+            BASE="origin/${{ github.event.pull_request.base.ref }}"
           else
             BASE="${{ github.event.before }}"
-          fi
-          # 基线不存在（如首次推送）时跳过并提示，不误伤历史 commit
-          if ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
-            echo "::warning::基线 commit 不存在（首次推送？），跳过本次检查"
-            exit 0
+            # 基线不存在（如首次推送）时跳过并提示，不误伤历史 commit
+            if ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+              echo "::warning::基线 commit 不存在（首次推送？），跳过本次检查"
+              exit 0
+            fi
           fi
           bad=$(git log --no-merges --format='%h %s' "${BASE}..HEAD" | grep -Ev '#[0-9]+' || true)
           if [ -n "$bad" ]; then
