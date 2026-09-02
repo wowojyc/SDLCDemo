@@ -61,8 +61,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add metrics/ci_test_failure_rate.json
           # #18 作溯源；push 非 main 分支不触发 ci.yml（无需 [skip ci]）
+          # 注意：首次创建远端不存在的分支时，git 无法推断 heads/tags，必须写完整 refname
+          # （HEAD:metrics-data 会报 "not a full refname"——二次实证踩坑）
           git commit -m "metrics: 追加 CI 失败率采样 (#18)"
-          git push origin HEAD:metrics-data
+          git push origin HEAD:refs/heads/metrics-data
           echo "已写回 metrics-data：$(git log -1 --format='%h %s')"
 
   detect:
