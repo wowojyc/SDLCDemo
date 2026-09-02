@@ -33,5 +33,5 @@ intent/spec/plan/代码走到哪一步，目前靠人肉对比文件判断；int
 
 > 六字段模板：意图/作者/状态 · 问题 · 预期成果 · 受影响的用户和系统 · 约束 · 待确认问题。
 > 来源字段：原始需求先在 GitHub 开 Issue 登记，intent.md 是它的 MRD（市场需求文档），来源填 Issue 编号（如 #12）；无关联 Issue 填 —。
-> 归档规则：需求完成（PR 合并）后，本文件移入 intent/archive/，audit 只统计顶层活跃 MRD。
+> 归档规则：需求完成（PR 合并）后，intent/spec/plan 三份文档一起移入各自 archive/，audit 只统计顶层活跃文档。
 > 字段固定，但内容用大白话写——不是填表，是让 AI 能直接读懂。
