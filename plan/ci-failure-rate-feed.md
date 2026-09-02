@@ -52,3 +52,25 @@
 - `[skip ci]` 不生效 → ci.yml 会被 collect push 触发一次：无害（非递归），检查 ci run 日志确认是否触发，若触发则改用 ci.yml `paths-ignore: ['metrics/**']` 兜底
 - collect 脚本 API 403（token 权限）→ run 黄（continue-on-error），检查 workflow permissions
 - 冷启动 insufficient_data → 属设计预期（≥2 个点后才分档），连续跑 2-3 天后正常
+
+## 执行修正记录（PR #19 合并后实证发现，2026-09-02）
+
+### 实证结果（Step 8 首次执行，run 33605657971）
+- ✅ 采集真实失败率 0.2143（窗口内 ci.yml run 如实统计）
+- ✅ 本地 commit 生成（`metrics: 追加 CI 失败率采样 (#18)`）
+- ❌ `git push origin HEAD:main` 被拒：`GH006: Protected branch update failed`——**main 分支保护要求一切变更走 PR，workflow 的 GITHUB_TOKEN 无法直推**（bot 非 admin，enforce_admins 开关均无法绕过）
+- ✅ 容错按设计生效：collect 失败但 run 整体绿（continue-on-error），detect 用 `if: always()` 照常读旧值，diagnose/act 正常 skip
+
+### 根因
+spec 决策「collect job 直接 push main」与 main 分支保护互斥；本地测试无法暴露，只有云端真实 run 可见。
+
+### 修正（PR #20）
+- **写回改走独立数据分支 `metrics-data`**（不受保护）：ci.yml 只监听 push main → 推数据分支天然不触发 CI（原风险表「[skip ci] 不生效」风险消除）；main 上 metrics 文件降级为冷启动种子
+- collect job：切到 `metrics-data` 最新（首次从 main 起步）→ 从 main 取最新脚本（reset 取消 stage，commit 只含 metrics）→ 采集 → commit（#18 溯源）→ `git push origin HEAD:metrics-data`
+- detect job：新增「载入 metrics 历史」步骤（fetch + checkout 数据分支文件，只读）
+- spec F2/F4 + bands.yaml 数据流注释 + metrics 种子说明同步更新
+
+### 修正后需重跑验证（Step 8 二次执行）
+1. PR #20 4/4 全绿 → merge
+2. 手动触发 maintenance-scan → 验证：`metrics-data` 分支出现真实追加 commit；未触发新 ci.yml run；detect 输出真实当前值（冷启动期可能 insufficient_data，属预期）
+3. 通过后续 Step 9（归档）→ Step 10（发版 v0.1.1）

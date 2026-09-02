@@ -31,9 +31,18 @@
 ### F2 `maintenance-scan.yml`：detect 前插入 collect job
 
 - **决定：新 job `collect`（permissions: contents: write），detect job 改为 `needs: collect`**（detect 保持只读权限）
-- collect job steps：checkout → setup-python → `python scripts/collect_ci_failure_rate.py`（env: GH_TOKEN=`${{ github.token }}`）→ `git add metrics/ci_test_failure_rate.json` → commit（message：`metrics: 追加 CI 失败率采样 (#18) [skip ci]`——引用 #18 防 check-commit-refs 误伤，`[skip ci]` 防递归触发 ci.yml）→ `git push`（推 main：本 workflow 只 schedule/manual 触发，无递归风险；`git config user` 设为 `github-actions[bot]`）
+- **写回目标：独立数据分支 `metrics-data`，不推 main**——实证修正（原设计直推 main 被分支保护拒绝，见下方「设计修正记录」）
+- collect job 步骤：checkout → setup-python → 切到 `metrics-data` 最新（首次不存在则从 main 起步，种子文件冷启动）→ 从 main 取最新采集脚本（代码随 main 演进；`git reset` 取消 stage，commit 只含 metrics）→ `python scripts/collect_ci_failure_rate.py` → 有变化则 commit（message：`metrics: 追加 CI 失败率采样 (#18)`，#18 作溯源）→ `git push origin HEAD:metrics-data`（`git config user` 设为 `github-actions[bot]`）
+- 无递归：ci.yml 只监听 `push: branches: [main]`，推 `metrics-data` 不触发任何 CI（无需 `[skip ci]`）；commit 无需引用 Issue 防误伤（check-commit-refs 只在 main push / PR 事件运行），引用 #18 仅作溯源
 - 容错：collect job 整体 `continue-on-error: true`（采集失败可见但不断链）；detect 用 `if: always()` 保证即便 collect 失败也继续检测（读旧值）
-- detect job 权限不变（只读）；VALUE 来源不变（`values[-1]` 现在就是真实值）；diagnose/act 不变
+- detect job 权限不变（只读）；新增「载入 metrics 历史」步骤（fetch + checkout 数据分支的 metrics 文件到工作区，只读操作）；VALUE 来源不变（`values[-1]` 现在就是真实值）；diagnose/act 不变
+
+#### 设计修正记录（v0.1.1 演习实证）
+
+- 原设计（PR #19）collect job 直接 `git push origin HEAD:main`，实测被拒：`GH006: Protected branch update failed——Changes must be made through a pull request`（main 分支保护要求一切变更走 PR，workflow 的 GITHUB_TOKEN 非 admin、enforce_admins 开关均无法绕过）
+- 根因：spec 决策时未意识到「写回 main」与「保护 main」互斥；本地测试无法暴露，只有云端真实 run 可见
+- 修正：写回改走不受保护的 `metrics-data` 分支（数据与代码分离，main 历史不被每日采样 commit 污染）；`main` 上的 metrics 文件降级为冷启动种子
+- 教训：凡是「workflow 自动写仓库」的需求，必须先确认目标分支的分支保护状态——受保护分支只能走 PR 或独立数据分支
 
 ### F3 `bands.yaml`：真实化 + 如实声明
 
@@ -42,15 +51,16 @@
 - 补注释：σ 阈值实现在 `scripts/detect_drift.py`（硬编码 WE 规则），bands.yaml 声明层级与动作（log/diagnose/act），二者由 maintenance-scan.yml 的 job 结构绑定
 - 删除文件尾部"填写提示（填完可删）"整段
 
-### F4 `metrics/ci_test_failure_rate.json`：清空示例历史
+### F4 `metrics/ci_test_failure_rate.json`：清空示例历史，降级为冷启动种子
 
-- 首采前把 values 清空（示例数据污染真实基线）——`_说明` 更新为"由 maintenance-scan 每日采集追加，勿手改"
+- 首采前把 values 清空（示例数据污染真实基线）——`_说明` 更新为"冷启动种子：真身由 collect job 维护在 metrics-data 分支"
 - 冷启动：前 1-2 次采集 detect 会报 `insufficient_data`（脚本要求 ≥2 个历史点），属预期，日志可见即可
+- 日常历史写入 `metrics-data` 分支（见 F2 修正），main 上文件保持空 values 不增长
 
 ## 3. 验收标准（对应 Issue #18）
 
 - [ ] F1 脚本存在，`failure_rate()` 有单元测试（tests/test_collect_ci_failure_rate.py：全 success / 含失败 / cancelled 排除 / 空列表边界）
-- [ ] F2 collect job 就位；手动触发 maintenance-scan 后 metrics 文件出现真实追加 commit（message 含 #18 + [skip ci]），且**未**触发新的 ci.yml run（[skip ci] 生效实证）
+- [ ] F2 collect job 就位；手动触发 maintenance-scan 后 **metrics-data 分支**出现真实追加 commit（message 含 #18），且**未**触发新的 ci.yml run（push 非 main 分支天然不触发，实证）
 - [ ] F3 bands.yaml 无模板占位（无 `<指标名>`、无"填完可删"）
 - [ ] F4 metrics values 从真实采样重建（非示例数据）
 - [ ] make test 全绿、make lint 零告警
