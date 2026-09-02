@@ -2,5 +2,7 @@
   "_说明": "ci_test_failure_rate 的冷启动种子（values 空）。日常历史真身由 maintenance-scan 的 collect job 维护在 metrics-data 分支（每日采集追加），main 受分支保护不可直推；本文件仅作首次冷启动与文档说明，勿手改。",
   "metric": "ci_test_failure_rate",
   "unit": "ratio",
-  "values": []
+  "values": [
+    0.2
+  ]
 }
