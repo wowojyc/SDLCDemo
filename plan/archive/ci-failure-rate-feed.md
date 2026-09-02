@@ -76,7 +76,10 @@ spec 决策「collect job 直接 push main」与 main 分支保护互斥；本�
 
 **再修正（PR #21）**：push 改完整 refname `HEAD:refs/heads/metrics-data`
 
-**三次实证步骤**：
-1. PR #21 4/4 全绿 → merge
-2. 手动触发 maintenance-scan → 验证：`metrics-data` 分支出现真实追加 commit（#18 溯源）；未触发新 ci.yml run；detect 输出真实当前值（冷启动期可能 insufficient_data，属预期）
-3. 通过后续 Step 9（归档）→ Step 10（发版 v0.1.1）
+**三次实证结果（run 33607771519，2026-09-02）**：collect job 全链路 SUCCESS——`metrics-data` 分支首次创建（commit faa49d0 `metrics: 追加 CI 失败率采样 (#18)`），真实值 0.2 落地；未触发新 ci.yml run（ci.yml 最新 run 仍为 PR #21 merge 的 push，collect push 之后无新 run）；detect 载入真实历史输出 `tier=insufficient_data`（冷启动单点，属预期，≥2 点后分档）。**Step 8 验收通过。**
+
+### Step 9 · 归档
+- intent/spec/plan 三份移入各自 `archive/`（git mv）
+
+### Step 10 · 发版 v0.1.1（Gate 4.5）
+- `git tag v0.1.1 && git push origin v0.1.1` → release.yml 门禁（test/lint + 格式校验）→ Release 生成（notes 含本需求全部 PR）
