@@ -19,8 +19,10 @@ jobs:
           fetch-depth: 0  # 需要完整历史来比较 before / base.sha
 
       - name: 检查 commit 是否引用 Issue
-        # dependabot 的 PR 由 GitHub bot 自动生成，commit 无法引用 Issue，豁免；
-        # 普通 PR / push 场景不受影响（push 事件该字段为空，条件恒真）。
+        # dependabot 的 commit 由 GitHub bot 自动生成，无法引用 Issue，双机制豁免：
+        # 1) PR 场景：整步跳过（if 条件，bot PR 的 head 全为 bot commit，无需检查）；
+        # 2) push 场景：按作者过滤（dependabot PR 合并进 main 触发 push 事件时，
+        #    if 条件字段为空恒真，但 bot commit 会被下面的作者过滤排除，不误报）。
         if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
@@ -37,7 +39,11 @@ jobs:
               exit 0
             fi
           fi
-          bad=$(git log --no-merges --format='%h %s' "${BASE}..HEAD" | grep -Ev '#[0-9]+' || true)
+          # 输出带作者列（%an），先排除 dependabot[bot] 的 commit，再查无 #Issue 的；
+          # 真人提交（wowojyc 等）不受影响，仍强制引用 Issue。
+          bad=$(git log --no-merges --format='%h %an %s' "${BASE}..HEAD" \
+            | grep -v 'dependabot\[bot\]' \
+            | grep -Ev '#[0-9]+' || true)
           if [ -n "$bad" ]; then
             echo "以下 commit 未关联 Issue（message 缺 #数字）："
             echo "$bad"
