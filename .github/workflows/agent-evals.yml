@@ -14,7 +14,7 @@ name: agent-evals
 
 on:
   pull_request:
-    paths: ['AGENTS.md', '.qoder/**', 'Makefile']
+    paths: ['AGENTS.md', '.qoder/**', 'Makefile', 'evals/**']
   schedule:
     # cron 用 UTC：UTC 18:00 = 北京时间次日 02:00
     - cron: '0 18 * * *'
@@ -80,7 +80,9 @@ jobs:
               git apply --recount /tmp/change.patch
               echo "已应用模型补丁（$(wc -l < /tmp/change.patch) 行）"
             else
-              echo "::warning::模型未产出可应用补丁，该 eval 视为未通过（模型输出前 200 字：$(head -c 200 /tmp/model-output.txt)）"
+              # 空补丁分两类：实现型任务 = 模型退化（由下方 check.sh 确定性判定失败）；
+              # 守卫型任务 = 合法输出（确认现状无需修改，check.sh 照常判定）——故不在此报 warning
+              echo "模型未产出可应用补丁，按 evals/check.sh 确定性判定（模型输出前 200 字：$(head -c 200 /tmp/model-output.txt)）"
             fi
 
             if ! bash evals/check.sh "$eval_file" result.json; then
