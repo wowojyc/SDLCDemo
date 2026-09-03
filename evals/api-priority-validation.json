@@ -1,7 +1,7 @@
 {
-  "_说明": "真实 eval：src/api.py 的 _create_todo 对 priority 无边界校验——传非数字会在 todos.add 的 int() 处抛 ValueError 导致 HTTP 500，浮点/负数被静默接受。从近期代码走查中捞出，替换原 mock-docstring.json。",
-  "name": "给 POST /todos 的 priority 增加边界校验",
-  "prompt": "src/api.py 的 _create_todo 把 payload.get(\"priority\", 0) 直接传给 add()，add() 内部 int(priority) 在传入非数字（如 \"abc\"）时会抛 ValueError 导致 HTTP 500 崩溃。请在 _create_todo 里对 priority 增加边界校验：仅当 priority 已提供时检查，必须是 0-99 的整数（bool 除外），否则调用 self._error(400, \"invalid_priority\", \"priority 必须是 0-99 的整数\") 并 return。缺省或为 0 时保持现有成功路径不变，不要改动 src/todos.py 和现有测试。",
+  "_说明": "守卫型 eval（原实现型案例过期改造，Issue #25）：初始案例要求加 priority 边界校验，该缺口已被真实需求实现（src/api.py 已有 invalid_priority 400 校验），原案例让 LLM 对着已完成任务画蛇添足导致每日定时失败。改造为守卫型——验证 LLM 能识别已实现需求并克制不乱改（能力不退化）。",
+  "name": "守卫：POST /todos 的 priority 边界校验保持完整（过期案例改造）",
+  "prompt": "src/api.py 的 _create_todo 已实现 priority 边界校验（见文件内容：raw_priority 缺省时为 0；非 bool 的 0-99 整数放行，否则 self._error(400, \"invalid_priority\", ...) 并 return）。你的任务：核对该校验是否完整正确。若已完整实现——不要修改任何文件，直接回复\"无需修改\"（不输出 diff）；若发现真实缺口（如未拒绝 bool、范围不是 0-99、未返回 400），才输出最小修复补丁。禁止无关重构，禁止改动 src/todos.py 和现有测试。",
   "files": ["src/api.py"],
   "checks": [
     { "type": "command_succeeds", "value": "make test", "_说明": "既有测试仍然全绿（行为不变）" },
