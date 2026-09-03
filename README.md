@@ -54,7 +54,7 @@ PR 写 `Closes #xx`，合并即关闭 Issue —— 一条需求从登记到合�
 ```
 .
 ├─ AGENTS.md                     Qoder 项目规则（四段 + 验证块）
-├─ intent/<slug>.md               01 规划：每需求一份 MRD（六字段 + 来源 Issue，完成即归档）
+├─ intent/<slug>.md               01 规划：每需求一份 MRD（七字段 + 来源 Issue，完成即归档）
 ├─ spec/<slug>.md                 02 设计：每需求一份 PRD（按需，完成即归档）
 ├─ plan/<slug>.md                 03 计划：每需求一份技术方案（按需，完成即归档）
 ├─ REVIEW.md                     05 部署：CR 审查标准（人写的尺子）
@@ -105,7 +105,7 @@ git config core.hooksPath .githooks   # 启用提交前兜底
 
 ### Gate 1 · 需求收口
 先在 GitHub 开 Issue 登记原始需求，再手写（或改写）`intent/<slug>.md`
-（六字段，来源字段填 Issue 编号；slug 用需求的英文短名，如 `flow-tracking`）。提交进 git。
+（七字段，来源字段填 Issue 编号；slug 用需求的英文短名，如 `flow-tracking`）。提交进 git。
 **验收**：找一个没参与的人读，他能说清"要什么、为什么、怎么算成"。
 
 ### Gate 2 · 设计 + 计划
