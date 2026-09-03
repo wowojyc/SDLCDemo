@@ -2,11 +2,15 @@ name: agent-evals
 
 # 04 测试 · CI 中的持续评估
 #
-# 评的不是"产品功能对不对"，而是"AI 写码的能力有没有退化"。
-# 因为这些配置在"驾驶"AI（AGENTS.md / .qoder/rules / hooks），
+# 评的不是"产品功能对不对"（那是 tests/ 的职责），而是"AI 写码的能力有没有退化"。
+# 因为这些配置在"驾驶"AI（AGENTS.md / .qoder/rules / hooks / prompts），
 # 所以配置一变就要像测代码一样做回归。
 #
-# 两类触发：配置变更（谁改谁先过考）+ 每天定时兜底。
+# 两类触发，跑不同的考卷（双轨设计 #27）：
+#   定时体检（schedule）→ 只跑基准题（benchmark-*.json）：与业务解耦的通用规范守卫，
+#     恒定标尺，专测外部漂移（供应商换模型/提示词退化），永不因代码演进过期
+#   变更回归（pull_request / workflow_dispatch）→ 跑全量（基准题 + 缺口题）：
+#     缺口题（gap-*.json）绑定真实业务缺口，缺口关闭即退役/改造（守卫态除外）
 # 前置：Secrets 配 LLM_API_KEY（硅基流动：https://cloud.siliconflow.com 获取）
 # 可选：LLM_BASE_URL / LLM_MODEL 仓库变量，默认硅基流动 + DeepSeek-V3
 #
@@ -14,7 +18,8 @@ name: agent-evals
 
 on:
   pull_request:
-    paths: ['AGENTS.md', '.qoder/**', 'Makefile', 'evals/**']
+    # 全量"驾驶 AI"的配置：变更必须唤起评估（谁改谁先过考）
+    paths: ['AGENTS.md', '.qoder/**', 'Makefile', 'evals/**', '.githooks/**', '.github/prompts/**']
   schedule:
     # cron 用 UTC：UTC 18:00 = 北京时间次日 02:00
     - cron: '0 18 * * *'
@@ -45,7 +50,14 @@ jobs:
         run: |
           failed=0
           total=0
-          for eval_file in evals/*.json; do
+          # 定时体检只跑基准题（恒定标尺）；变更回归跑全量（基准题 + 缺口题）
+          shopt -s nullglob
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+            eval_files=(evals/benchmark-*.json)
+          else
+            eval_files=(evals/*.json)
+          fi
+          for eval_file in "${eval_files[@]}"; do
             total=$((total+1))
             prompt=$(jq -r '.prompt' "$eval_file")
 

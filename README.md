@@ -65,7 +65,7 @@ PR 写 `Closes #xx`，合并即关闭 Issue —— 一条需求从登记到合�
 ├─ qoder-settings.example.json   hooks + permissions 配置示例
 ├─ src/ tests/ Makefile          最小可跑项目（一条命令跑测试）
 ├─ .githooks/{pre-commit,commit-msg,pre-push}   git 层兜底（测试 / Issue 关联 / 本地审查）
-├─ evals/                        04 测试：评估套件
+├─ evals/                        04 测试：评估套件（基准题 + 缺口题）
 ├─ scripts/detect_drift.py       06 维护：确定性检测（不用 AI 判断）
 ├─ scripts/audit_artifacts.py    链路审计：产物链状态推导（确定性）
 ├─ metrics/                      指标历史（检测脚本的输入）
@@ -74,7 +74,7 @@ PR 写 `Closes #xx`，合并即关闭 Issue —— 一条需求从登记到合�
    └─ workflows/
       ├─ ci.yml                  基础 CI
       ├─ pr-review.yml           05：AI 自动审 PR
-      ├─ agent-evals.yml         04：持续评估（配置变更 + 定时）
+      ├─ agent-evals.yml         04：评估（基准题定时体检 + 缺口题变更回归）
       ├─ maintenance-scan.yml    06：定期检测 + 分档响应
       └─ release.yml             发布：push v* tag → 门禁 → Release
 ```
@@ -206,7 +206,7 @@ Actions 里 `maintenance-scan` 每天 03:00 跑；也可手动触发并传 value
 |---|---|---|---|
 | `ci.yml` | push / PR | 跑测试 + lint | 地基 |
 | `pr-review.yml` | PR 开启/更新 | 按 REVIEW.md 审，贴评论 | 05 部署 |
-| `agent-evals.yml` | 配置变更 + 每天 02:00（北京时间，UTC 18:00） | 跑 eval 套件，掉分就失败 | 04 测试 |
+| `agent-evals.yml` | 配置变更 + 每天 02:00（北京时间，UTC 18:00） | 跑评估（定时=基准题 / 变更=全量），掉分就失败 | 04 测试 |
 | `maintenance-scan.yml` | 每天 03:00 + 手动 | 确定性检测 → 分档响应 | 06 维护 |
 | `release.yml` | push `v*` tag | 门禁 → 生成 Release | 发布 |
 

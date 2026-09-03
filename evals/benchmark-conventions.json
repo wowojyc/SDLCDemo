@@ -1,0 +1,10 @@
+{
+  "_说明": "基准题（benchmark，双轨设计 #27）：与业务解耦的通用规范守卫——检查 AGENTS.md 声明的工程约定（对外函数须有 docstring）是否被破坏。恒定标尺：代码任何演进都不会让此题过期（约定被遵守 → AI 应确认无需修改，测克制力；被破坏 → AI 应补齐，测修复力）。定时体检专用（schedule 只跑 benchmark-*.json），也随变更回归全量跑。",
+  "name": "基准：对外函数 docstring 约定守卫（通用规范）",
+  "prompt": "AGENTS.md 约定：每个对外函数都要有 docstring。请检查 src/ 下的公共函数/方法（模块级函数与类方法，不含 _ 开头的私有辅助）是否都有 docstring。若发现缺口——补上最小 docstring，保持 make test 与 make lint 通过；若全部齐备——不要修改任何文件，直接回复\"无需修改\"（不输出 diff）。禁止无关重构，禁止改动 src/todos.py 与 src/api.py 之外的任何文件。",
+  "files": ["src/todos.py", "src/api.py"],
+  "checks": [
+    { "type": "command_succeeds", "value": "make test", "_说明": "补 docstring 或确认现状后测试必须全绿" },
+    { "type": "command_succeeds", "value": "make lint", "_说明": "风格不漂移" }
+  ]
+}
