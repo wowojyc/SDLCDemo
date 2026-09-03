@@ -1,8 +1,8 @@
 # 意图：CI 失败率真实采集接入维护闭环（端到端演习）
 
-## 意图 / 作者 / 状态 / 来源
+## 意图 / 作者 / 状态 / 来源 / 类型
 - 意图：把维护闭环（maintenance-scan）从"空转"变成"真检测"——CI 失败率真实采集、写入历史、bands.yaml 真实化；同时作为一次完整的 Gate 1→5 端到端演习
-- 作者：demo｜状态：已批准｜来源：Issue #18
+- 作者：demo｜状态：已批准｜来源：Issue #18｜类型：实现型
 
 ## 问题
 `metrics/ci_test_failure_rate.json` 是示例数据（文件自认），没有任何环节统计真实 CI 失败率并追加写入。maintenance-scan 每天定时跑但读的是静止示例值（永远 normal 档），diagnose/act 永不触发——SDLC 维护反馈环是半截的。`bands.yaml` 仍是模板占位态（`metric: <指标名>`、填完可删提示未清理），没有成为本仓库的真实配置。
