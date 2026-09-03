@@ -2,8 +2,8 @@
 
 ## 意图 / 作者 / 状态 / 来源 / 类型
 - 意图：把需求链路的时间维度变成可度量的事实——采集 intent 存活率、spec 返工次数、需求周期三项过程指标，让"AI 原生流程是否真的比传统流程快"有证据可查
-- 作者：AI（trae 起草，Qoder 评审修订 v2）｜状态：草稿（评审修订 v2，待 Gate 1 批准）｜来源：Issue #29
-- 类型：实现型（产采集脚本）+ 规则型（改 intent 模板与类型体系）——类型字段设计见「设计决策 A」
+- 作者：AI（trae 起草，Qoder 评审修订 v2）｜状态：已批准（Gate 1）｜来源：Issue #29
+- 类型：实现型（主型；兼改 intent 模板与类型体系，见「设计决策」）
 
 ## 问题
 仓库目前只有产品指标（`metrics/ci_test_failure_rate.json` + `scripts/detect_drift.py`），过程指标整层缺失。对照 Anthropic《AI-Native SDLC Playbook》，手册每个阶段（Plan/Design/Build）都配先行/滞后度量：
