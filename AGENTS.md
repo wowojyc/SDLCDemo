@@ -20,6 +20,7 @@
 - `tests/`：pytest，与 `src/` 目录结构一一对应
 - `src/gen/`：生成目录，**禁止手改**
 - `intent/` `spec/` `plan/`：每需求一份文档（`<slug>.md`，头部标注来源 Issue）；spec/plan 按需；完成即三份一起移入各自 `archive/`
+- `wiki/`：长青知识层（跨需求决策/教训；维护规则见 wiki/AGENTS.md，查询先读 wiki/index.md）
 
 ## Things AI gets wrong
 - **不要为了让测试通过而修改 `tests/` 下的文件**——测试失败要改 `src/`
