@@ -19,3 +19,8 @@
 - 教训：本地 Qoder 运行期失败（额度超限）→ `|| true` 吞退出码 + 判定只看模板（错误文本无 `## Important` 段）→ 结论行仍“审查通过”；失败被包装成通过
 - 实测触发两次（额度超限回显与“审查通过”并存），页面初稿推断不精确已按实测修正（Schema 约定：冲突以实测为准）
 - 来源：.githooks/pre-push 代码实证 + push 实测 + prompts/review.md 模板核验
+
+## [2026-09-04] ingest | llm-wiki 需求归档编译（Issue #32 收尾 · 路径 B 首演）
+- intent/spec/plan/llm-wiki.md 三份随 PR #33 合并后由 chore/archive-32 移入各自 archive/（同 #29 → PR #31 先例）
+- 知识核对：本需求决策已在 Gate 3 入库（Schema/人视角入口/首批 4 节点/失效模式），归档无新增知识 → 仅做引用同步：doc-transient 来源行与 artifact-chain 实战验证节改指 archive 路径
+- 路径 B 首演结论：wiki 页面跨需求长青，归档只触发“引用同步 + log 追加”，不重复编译已入库知识

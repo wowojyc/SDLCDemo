@@ -28,7 +28,7 @@ Issue（原始需求）→ intent/<slug>.md（MRD）→ spec/<slug>.md（PRD）
 ## 实战验证（Issue #29 / #32）
 
 - process-metrics 需求（#29）：intent/spec/plan 三份文档随 PR #31 一起移入各自 archive/，audit 输出进度表确认归档兜底生效
-- 本需求（#32）：intent/llm-wiki.md 活跃期间顶层 spec/plan 与 intent 同名同 slug，断链检测不误报；wiki/ 目录独立于产物链，不参与阶段判定
+- llm-wiki 需求（#32）：三份文档随 PR #33 合并后由 chore/archive-32 归档（同 #29 路径，归档兜底二次验证）；wiki/ 独立于产物链——落地期间 audit 无断链误报，归档亦不影响其页面（本页即从 archive 编译的产物）
 
 ## 相关
 
