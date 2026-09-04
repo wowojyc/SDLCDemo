@@ -1,6 +1,6 @@
 # 文档时态边界：Transient vs Persistent
 
-> 类型：concept ｜ 来源：Issue #32（intent/llm-wiki.md 设计决策 E）｜ 更新：2026-09-04
+> 类型：concept ｜ 来源：Issue #32（intent/archive/llm-wiki.md 设计决策 E）｜ 更新：2026-09-04
 
 ## 是什么
 
