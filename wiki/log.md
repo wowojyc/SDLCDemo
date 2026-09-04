@@ -14,7 +14,8 @@
 - lint：修复 2 处跨目录断链（decisions/ 页链接 concepts/ 缺 ../），复检无断链、无孤立页
 - schema 演化：AGENTS.md 新增“发起（人视角）”节——随时可对话触发 ingest/query/lint，不再只依赖归档动作；README 目录与知识收口节同步
 
-## [2026-09-04] ingest | 路径 A 首次演练：pre-push 审查静默降级教训（Issue #32）
-- 更新 decisions/review-non-blocking.md：新增“已知失效模式：审查故障 = 静默放行”节（实测）
-- 教训：本地 Qoder 运行期失败（额度超限等）→ 2>/dev/null || true 吞错 + 空输出判无发现 → push 静默放行；预知缺失有提示、运行期失败无提示，是防护链上唯一静默缺口
-- 来源：.githooks/pre-push 代码实证 + prompts/review.md 模板核验（无发现时必有输出）
+## [2026-09-04] ingest | 路径 A 首次演练：pre-push 审查故障仍报通过（Issue #32）
+- 更新 decisions/review-non-blocking.md：新增“已知失效模式：审查故障仍报‘审查通过’”节
+- 教训：本地 Qoder 运行期失败（额度超限）→ `|| true` 吞退出码 + 判定只看模板（错误文本无 `## Important` 段）→ 结论行仍“审查通过”；失败被包装成通过
+- 实测触发两次（额度超限回显与“审查通过”并存），页面初稿推断不精确已按实测修正（Schema 约定：冲突以实测为准）
+- 来源：.githooks/pre-push 代码实证 + push 实测 + prompts/review.md 模板核验

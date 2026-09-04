@@ -16,8 +16,8 @@
 | 页面 | 摘要 |
 |---|---|
 | [Hooks 用 Python 标准库零依赖](pages/decisions/hooks-python-zero-dep.md) | hooks 只用 Python 标准库：裁剪 git-bash 缺 POSIX 工具、npm sh 包装脚本静默失效、`[[ =~ ]]` 的 # 注释陷阱——避免一切静默失效点 |
-| [AI 审查不阻塞、不批准合并](pages/decisions/review-non-blocking.md) | REVIEW.md 是人写给 AI 的尺子；审查只提建议，批准走 code owner + 分支保护；防臆测宁可漏报不可错报；已知失效模式：审查运行期故障会静默放行 |
+| [AI 审查不阻塞、不批准合并](pages/decisions/review-non-blocking.md) | REVIEW.md 是人写给 AI 的尺子；审查只提建议，批准走 code owner + 分支保护；防臆测宁可漏报不可错报；已知失效模式：审查运行期故障仍报“审查通过” |
 
 ---
 
-*更新：2026-09-04（首批 4 节点，来源 Issue #4/#18/#23/#29/#32 archive 编译；review-non-blocking 补已知失效模式节）*
+*更新：2026-09-04（首批 4 节点，来源 Issue #4/#18/#23/#29/#32 archive 编译；review-non-blocking 补已知失效模式节，两次实测触发）*
