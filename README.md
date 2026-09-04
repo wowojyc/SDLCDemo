@@ -37,6 +37,13 @@
 时间线）。本地 `.githooks/commit-msg` 强制；被 `--no-verify` 绕过时，云端 `ci.yml` 兜底再查。
 PR 写 `Closes #xx`，合并即关闭 Issue —— 一条需求从登记到合并全程留痕。
 
+### 知识收口：需求归档 → wiki 编译
+
+需求完成（三文档移入 archive/）时，把其中的**决策与教训编译进 `wiki/`**（长青知识层）——
+不随归档消失，供后续会话继承（如"hooks 为何用 Python""REVIEW 为何不阻塞"）。
+随时可在对话里说"把 XX ingest 进 wiki"主动摄入；维护规则见 `wiki/AGENTS.md`，
+查询先读 `wiki/index.md`。
+
 ### Qoder Hooks 能做什么（这是"硬防护"层）
 
 | 事件 | 本仓库的用法 | 对应原课 |
@@ -57,6 +64,10 @@ PR 写 `Closes #xx`，合并即关闭 Issue —— 一条需求从登记到合�
 ├─ intent/<slug>.md               01 规划：每需求一份 MRD（七字段 + 来源 Issue，完成即归档）
 ├─ spec/<slug>.md                 02 设计：每需求一份 PRD（按需，完成即归档）
 ├─ plan/<slug>.md                 03 计划：每需求一份技术方案（按需，完成即归档）
+├─ wiki/AGENTS.md                07 维护：LLM Wiki Schema（Ingest/Query/Lint 工作流，人机共演化）
+├─ wiki/index.md                 07 维护：长青知识索引（查询先读这里）
+├─ wiki/log.md                   07 维护：时序日志（ingest/query/lint 可 grep）
+├─ wiki/pages/                   07 维护：长青知识节点（concepts 定义 / decisions 决策）
 ├─ REVIEW.md                     05 部署：CR 审查标准（人写的尺子）
 ├─ bands.yaml                    06 维护：越界响应层级
 ├─ .qoder/

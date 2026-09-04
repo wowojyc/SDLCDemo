@@ -9,3 +9,7 @@
   - concepts/doc-transient-persistent-boundary.md ← Issue #32 设计决策 E
   - decisions/hooks-python-zero-dep.md ← Issue #18/#29 + README §六 + hooks 实测
   - decisions/review-non-blocking.md ← Issue #23 + REVIEW.md + prompts/review.md
+
+## [2026-09-04] lint + schema 演化 | llm-wiki 初始化补全（Issue #32）
+- lint：修复 2 处跨目录断链（decisions/ 页链接 concepts/ 缺 ../），复检无断链、无孤立页
+- schema 演化：AGENTS.md 新增“发起（人视角）”节——随时可对话触发 ingest/query/lint，不再只依赖归档动作；README 目录与知识收口节同步

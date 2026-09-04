@@ -2,6 +2,7 @@
 
 > 本仓库的长青知识层索引。**查询时先读这里**定位相关页面，再深入阅读。
 > 维护：每次 Ingest/Query 回写后更新（见 [AGENTS.md](AGENTS.md)）。
+> 想往 wiki 加知识？对话里说“把 XX ingest 进 wiki”即可，发起方式见 [AGENTS.md](AGENTS.md)（人视角入口）。
 
 ## Concepts（定义：机制、边界、判定规则）
 
